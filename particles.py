@@ -1,9 +1,9 @@
 class Particles:
 
-    def __init__(self, position, speed, type):
+    def __init__(self, position, speed, ptype):
         self.position = position
         self.speed = speed
-        self.type = type
+        self.type = ptype
 
     @property
     def position(self):
@@ -22,9 +22,9 @@ class Particles:
         self.speed = speed
 
     @property
-    def type(self):
-        return self.type
+    def ptype(self):
+        return self.ptype
 
     @type.setter
-    def type(self, type):
-        self.type = type
+    def ptype(self, ptype):
+        self.ptype = ptype
