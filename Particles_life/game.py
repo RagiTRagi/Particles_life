@@ -149,7 +149,6 @@ def calculate_forces(grid, interaction_matrix, noise_param, r_max):
             total_forces[target_idx] = gesamtkraft
     return total_forces
 
-import numpy as np
 
 letter_index = {'Blau': 0, 'Rot': 1, 'Gelb': 2, 'Grün': 3}
 
