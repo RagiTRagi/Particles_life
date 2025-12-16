@@ -148,3 +148,49 @@ def calculate_forces(grid, interaction_matrix, noise_param, r_max):
                         
             total_forces[target_idx] = gesamtkraft
     return total_forces
+
+class Game:
+    def __init__(self, n=2000, world_width=100.0, world_height=100.0, r_max=5.0):
+        self.w = world_width
+        self.h = world_height
+        self.r_max = r_max
+
+        self.pos = np.random.uniform([0, 0], [self.w, self.h],
+                                     size=(n, 2)).astype(np.float32)
+        self.vel = np.zeros_like(self.pos, dtype=np.float32)
+
+        possible_types = np.array(["A", "B", "C"])
+        self.types = np.random.choice(possible_types, size=n)
+
+        self.friction = 0.99
+        self.noise_strength = 0.2
+
+        self.matrix = np.array([
+            [0.0,  5.0, -3.0],  
+            [-2.0, 0.0,  4.0],  
+            [3.0, -4.0,  0.0], 
+        ], dtype=float)
+
+
+    def step(self, dt=0.01):
+        noise = np.random.normal(0.0, self.noise_strength, size=2)
+        self.pos, self.vel, self.types = update_particles(
+            self.pos,
+            self.vel,
+            self.types,
+            self.w,
+            self.h,
+            self.r_max,
+            dt,
+            self.friction,
+            noise,
+            self.matrix,
+        )
+
+        self.pos[:, 0] = np.mod(self.pos[:, 0], self.w)
+        self.pos[:, 1] = np.mod(self.pos[:, 1], self.h)
+
+        return {
+            "pos": self.pos,
+            "types": self.types,
+        }
