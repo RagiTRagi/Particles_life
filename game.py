@@ -3,8 +3,15 @@ import numpy as np
 # für die Matrix Conversion
 letter_index = {"A":0, "B":1, "C":2}
 
-def calculate_forces(interaction_matrix, cols, rows, cell_starts, cell_counts, sorted_pos, sorted_vel, sorted_types, friction_param, noise_param, r_max):
-        
+def calculate_forces(grid, interaction_matrix, noise_param, r_max):
+
+    cols = grid['cols']
+    rows = grid['rows']
+    cell_starts = grid['starts']
+    cell_counts = grid['counts']
+    sorted_pos = grid['pos']
+    sorted_types = grid['types']
+
     # Grids filtern, die mind. 1 Partikel beinhalten & Initialisierung von array, welches die Gesamtkräfte jedes Partikels beinhaltet
     filled_grids = np.where(cell_counts > 0)[0]
     total_forces = np.zeros_like(sorted_pos, dtype=float)
@@ -69,9 +76,8 @@ def calculate_forces(interaction_matrix, cols, rows, cell_starts, cell_counts, s
 
                     # Überprüfung, ob Partikel sich in der maximalen Einflussreichweite befinden
                     if distance <= r_max:
-                        #print("Particles are in interaction radius")
-                        #friction_force = -friction_param * (velocity_j - velocity_i) # Berechnung der Dämpfung entlang der relativen Geschwindigkeit
                         anziehung_abstoßungskraft = (1 - distance/r_max) * interaction_matrix_val * n_vector # Berechnung der Anziehungs- /Abstoßungskraft 
-                        gesamtkraft += friction_param * anziehung_abstoßungskraft
+                        gesamtkraft += anziehung_abstoßungskraft
+                        
             total_forces[target_idx] = gesamtkraft
     return total_forces
