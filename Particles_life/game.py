@@ -148,3 +148,17 @@ def calculate_forces(grid, interaction_matrix, noise_param, r_max):
                         
             total_forces[target_idx] = gesamtkraft
     return total_forces
+
+
+def init_particles(n, width, height):
+    # Zufällige Positionen
+    pos = np.random.rand(n, 2) * np.array([width, height])
+    
+    # Zufällige Start-Geschwindigkeiten (optional, hier 0)
+    vel = np.zeros((n, 2))
+    
+    # Zufällige Typen (A, B, C)
+    type_keys = list(letter_index.keys())
+    types = np.random.choice(type_keys, n)
+    
+    return pos, vel, types
