@@ -150,7 +150,6 @@ def calculate_forces(grid, interaction_matrix, noise_param, r_max):
     return total_forces
 
 
-letter_index = {'Blau': 0, 'Rot': 1, 'Gelb': 2, 'Grün': 3}
 
 def init_particles(n, width, height):
     # Zufällige Positionen
