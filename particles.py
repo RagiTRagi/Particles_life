@@ -1,30 +1,16 @@
-class Particles:
+import numpy as np
 
-    def __init__(self, position, speed, ptype):
-        self._position = position
-        self._speed = speed
-        self._ptype = ptype
+letter_index = {'Blau': 0, 'Rot': 1, 'Gelb': 2, 'Grün': 3}
 
-    @property
-    def position(self):
-        return self._position
-
-    @position.setter
-    def position(self, position):
-        self._position = position
-
-    @property
-    def speed(self):
-        return self._speed
+def init_particles(n, width, height):
+    # Zufällige Positionen
+    pos = np.random.rand(n, 2) * np.array([width, height])
     
-    @speed.setter
-    def speed(self, speed):
-        self._speed = speed
-
-    @property
-    def ptype(self):
-        return self._ptype
-
-    @ptype.setter
-    def ptype(self, ptype):
-        self._ptype = ptype
+    # Zufällige Start-Geschwindigkeiten (optional, hier 0)
+    vel = np.zeros((n, 2))
+    
+    # Zufällige Typen (A, B, C)
+    type_keys = list(letter_index.keys())
+    types = np.random.choice(type_keys, n)
+    
+    return pos, vel, types
