@@ -150,7 +150,6 @@ def calculate_forces(grid, interaction_matrix, noise_param, r_max):
     return total_forces
 
 
-
 def init_particles(n, width, height):
     # Zufällige Positionen
     pos = np.random.rand(n, 2) * np.array([width, height])
