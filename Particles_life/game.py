@@ -49,3 +49,21 @@ def quadrantisieren(pos, velocities, types, world_width, world_height, r_max):
         "cols": cols,
         "rows": rows
     }
+
+def update_particles(pos, vel, types, world_wodth, world_height, r_max, dt, friction):
+    
+    # Grid berechnen
+    grid = quadrantisieren(pos, vel, types, world_wodth, world_height, r_max)
+
+    # Kräfte berechnen
+    forces = calculate_forces(grid)
+
+    # Neue Velocity berechnen
+    grid['vel'] += forces * dt
+    grid['vel'] *= friction
+
+    # Position updaten
+    grid['pos'] += grid['vel'] * dt
+
+    # Ausgabe von Position, Geschwindigkeit und Typ
+    return grid['pos'], grid['vel'], grid['types']
