@@ -50,6 +50,23 @@ def quadrantisieren(pos, velocities, types, world_width, world_height, r_max):
         "rows": rows
     }
 
+def update_particles(pos, vel, types, world_width, world_height, r_max, dt, friction, noise, matrix):
+    
+    # Grid berechnen
+    grid = quadrantisieren(pos, vel, types, world_width, world_height, r_max)
+
+    # Kräfte berechnen
+    forces = calculate_forces(grid, matrix, noise, r_max)
+
+    # Neue Velocity berechnen
+    grid['vel'] += forces * dt
+    grid['vel'] *= friction
+
+    # Position updaten
+    grid['pos'] += grid['vel'] * dt
+
+    # Ausgabe von Position, Geschwindigkeit und Typ
+    return grid['pos'], grid['vel'], grid['types']
 # für die Matrix Conversion
 letter_index = {"A":0, "B":1, "C":2}
 
@@ -65,7 +82,7 @@ def calculate_forces(grid, interaction_matrix, noise_param, r_max):
     # Grids filtern, die mind. 1 Partikel beinhalten & Initialisierung von array, welches die Gesamtkräfte jedes Partikels beinhaltet
     filled_grids = np.where(cell_counts > 0)[0]
     total_forces = np.zeros_like(sorted_pos, dtype=float)
-
+    
     # Iteration durch jedes befüllte target cell_grid und Berechnung der Nachbarn(oben/unten/links/rechts)
     for cell_id in filled_grids:
         n_ids = [cell_id]
@@ -84,12 +101,12 @@ def calculate_forces(grid, interaction_matrix, noise_param, r_max):
         if y < rows - 1:
             lower_n = cell_id + cols
             n_ids.append(lower_n)
-
+        
         # Indexe der Partikel im target Grid 
         s0 = cell_starts[cell_id]
         c0 = cell_counts[cell_id]
         target_particles = range(s0, s0+c0)
-
+        
         # Iteration über jedes Partikel in dem target grid
         for target_idx in target_particles:
 
@@ -128,71 +145,6 @@ def calculate_forces(grid, interaction_matrix, noise_param, r_max):
                     if distance <= r_max:
                         anziehung_abstoßungskraft = (1 - distance/r_max) * interaction_matrix_val * n_vector # Berechnung der Anziehungs- /Abstoßungskraft 
                         gesamtkraft += anziehung_abstoßungskraft
-
+                        
             total_forces[target_idx] = gesamtkraft
     return total_forces
-
-def update_particles(pos, vel, types, world_width, world_height, r_max, dt, friction, noise, matrix):
-
-    # Grid berechnen
-    grid = quadrantisieren(pos, vel, types, world_width, world_height, r_max)
-
-    # Kräfte berechnen
-    forces = calculate_forces(grid, matrix, noise, r_max)
-
-    # Neue Velocity berechnen
-    grid['vel'] += forces * dt
-    grid['vel'] *= friction
-
-    # Position updaten
-    grid['pos'] += grid['vel'] * dt
-
-    # Ausgabe von Position, Geschwindigkeit und Typ
-    return grid['pos'], grid['vel'], grid['types']
-
-
-class Game:
-    def __init__(self, n=2000, world_width=100.0, world_height=100.0, r_max=5.0):
-        self.w = world_width
-        self.h = world_height
-        self.r_max = r_max
-
-        self.pos = np.random.uniform([0, 0], [self.w, self.h],
-                                     size=(n, 2)).astype(np.float32)
-        self.vel = np.zeros_like(self.pos, dtype=np.float32)
-
-        possible_types = np.array(["A", "B", "C"])
-        self.types = np.random.choice(possible_types, size=n)
-
-        self.friction = 0.99
-        self.noise_strength = 0.2
-
-        self.matrix = np.array([
-            [0.0,  5.0, -3.0],  
-            [-2.0, 0.0,  4.0],  
-            [3.0, -4.0,  0.0], 
-        ], dtype=float)
-
-
-    def step(self, dt=0.01):
-        noise = np.random.normal(0.0, self.noise_strength, size=2)
-        self.pos, self.vel, self.types = update_particles(
-            self.pos,
-            self.vel,
-            self.types,
-            self.w,
-            self.h,
-            self.r_max,
-            dt,
-            self.friction,
-            noise,
-            self.matrix,
-        )
-
-        self.pos[:, 0] = np.mod(self.pos[:, 0], self.w)
-        self.pos[:, 1] = np.mod(self.pos[:, 1], self.h)
-
-        return {
-            "pos": self.pos,
-            "types": self.types,
-        }
