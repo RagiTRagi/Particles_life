@@ -67,7 +67,6 @@ def update_particles(pos, vel, types, world_width, world_height, r_max, dt, fric
 
     # Ausgabe von Position, Geschwindigkeit und Typ
     return grid['pos'], grid['vel'], grid['types']
-
 # für die Matrix Conversion
 letter_index = {"rot":0, "grün":1, "blau":2, "gelb":3}
 
@@ -162,9 +161,10 @@ class Game:
         self.noise_strength = 0.2
 
         self.matrix = np.array([
-            [0.0,  5.0, -3.0],
-            [-2.0, 0.0,  4.0],
-            [3.0, -4.0,  0.0],
+            [0.0,  5.0, -3.0,  2.0],
+            [-2.0, 0.0,  4.0, -1.0],
+            [3.0, -4.0,  0.0,  0.5],
+            [1.0, -2.0,  2.0,  0.0],
         ], dtype=float)
 
     def step(self, dt=0.01):
