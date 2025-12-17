@@ -67,8 +67,9 @@ def update_particles(pos, vel, types, world_width, world_height, r_max, dt, fric
 
     # Ausgabe von Position, Geschwindigkeit und Typ
     return grid['pos'], grid['vel'], grid['types']
+
 # für die Matrix Conversion
-letter_index = {"A":0, "B":1, "C":2}
+letter_index = {"rot":0, "grün":1, "blau":2, "gelb":3}
 
 def calculate_forces(grid, interaction_matrix, noise_param, r_max):
 
@@ -148,3 +149,55 @@ def calculate_forces(grid, interaction_matrix, noise_param, r_max):
                         
             total_forces[target_idx] = gesamtkraft
     return total_forces
+
+class Game:
+    def __init__(self, n=2000, world_width=100.0, world_height=100.0, r_max=5.0):
+        self.w = world_width
+        self.h = world_height
+        self.r_max = r_max
+
+        self.pos, self.vel, self.types = self.init_particles(n, self.w, self.h)
+
+        self.friction = 0.99
+        self.noise_strength = 0.2
+
+        self.matrix = np.array([
+            [0.0,  5.0, -3.0],
+            [-2.0, 0.0,  4.0],
+            [3.0, -4.0,  0.0],
+        ], dtype=float)
+
+    def step(self, dt=0.01):
+        noise = np.random.normal(0.0, self.noise_strength, size=2)
+
+        self.pos, self.vel, self.types = update_particles(
+            self.pos,
+            self.vel,
+            self.types,
+            self.w,
+            self.h,
+            self.r_max,
+            dt,
+            self.friction,
+            noise,
+            self.matrix,
+        )
+
+        self.pos[:, 0] = np.mod(self.pos[:, 0], self.w)
+        self.pos[:, 1] = np.mod(self.pos[:, 1], self.h)
+
+        return {
+            "pos": self.pos,
+            "types": self.types,
+        }
+
+    def init_particles(self, n, width, height):
+        pos = np.random.rand(n, 2) * np.array([width, height], dtype=np.float32)
+
+        vel = np.zeros((n, 2), dtype=np.float32)
+
+
+        type_keys = list(letter_index.keys())
+        types = np.random.choice(type_keys, n)
+
+        return pos, vel, types
