@@ -62,7 +62,7 @@ class ParticleCanvas(scene.SceneCanvas):
 if __name__ == "__main__":
 
     game = Game(
-        n=2000,
+        n=500,
         world_width=100.0,
         world_height=100.0,
         r_max=5.0,

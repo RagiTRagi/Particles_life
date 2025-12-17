@@ -40,44 +40,29 @@ def quadrantisieren(pos, velocities, types, world_width, world_height, r_max):
     cell_starts[unique_ids] = unique_starts
     cell_counts[unique_ids] = unique_counts
 
-    return {
-        "pos": sorted_pos,       # Die sortierten Daten
-        "vel": sorted_vel,
-        "types": sorted_types,
-        "starts": cell_starts,   # Das Inhaltsverzeichnis
-        "counts": cell_counts,   # Wie viele Partikel pro Zelle
-        "cols": cols,
-        "rows": rows
-    }
+    return sorted_pos, sorted_vel, sorted_types, cell_starts, cell_counts, cols, rows
 
 def update_particles(pos, vel, types, world_width, world_height, r_max, dt, friction, noise, matrix):
     
     # Grid berechnen
-    grid = quadrantisieren(pos, vel, types, world_width, world_height, r_max)
+    sorted_pos, sorted_vel, sorted_types, cell_starts, cell_counts, cols, rows = quadrantisieren(pos, vel, types, world_width, world_height, r_max)
 
     # Kräfte berechnen
-    forces = calculate_forces(grid, matrix, noise, r_max)
+    forces = calculate_forces(sorted_pos, sorted_vel, sorted_types, cell_starts, cell_counts, cols, rows, matrix, noise, r_max)
 
     # Neue Velocity berechnen
-    grid['vel'] += forces * dt
-    grid['vel'] *= friction
+    sorted_vel += forces * dt
+    sorted_vel *= friction
 
     # Position updaten
-    grid['pos'] += grid['vel'] * dt
+    sorted_pos += sorted_vel * dt
 
     # Ausgabe von Position, Geschwindigkeit und Typ
-    return grid['pos'], grid['vel'], grid['types']
+    return sorted_pos, sorted_vel, sorted_types
 # für die Matrix Conversion
 letter_index = {"rot":0, "grün":1, "blau":2, "gelb":3}
 
-def calculate_forces(grid, interaction_matrix, noise_param, r_max):
-
-    cols = grid['cols']
-    rows = grid['rows']
-    cell_starts = grid['starts']
-    cell_counts = grid['counts']
-    sorted_pos = grid['pos']
-    sorted_types = grid['types']
+def calculate_forces(sorted_pos, sorted_vel, sorted_types, cell_starts, cell_counts, cols, rows, interaction_matrix, noise_param, r_max):
 
     # Grids filtern, die mind. 1 Partikel beinhalten & Initialisierung von array, welches die Gesamtkräfte jedes Partikels beinhaltet
     filled_grids = np.where(cell_counts > 0)[0]
