@@ -67,8 +67,9 @@ def update_particles(pos, vel, types, world_width, world_height, r_max, dt, fric
 
     # Ausgabe von Position, Geschwindigkeit und Typ
     return grid['pos'], grid['vel'], grid['types']
+
 # für die Matrix Conversion
-letter_index = {"A":0, "B":1, "C":2}
+letter_index = {"rot":0, "grün":1, "blau":2, "gelb":3}
 
 def calculate_forces(grid, interaction_matrix, noise_param, r_max):
 
