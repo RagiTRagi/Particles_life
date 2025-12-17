@@ -42,7 +42,7 @@ class ParticleCanvas(scene.SceneCanvas):
         pos = np.asarray(snap["pos"], dtype=np.float32)
         raw_types = np.asarray(snap["types"]) 
 
-        type_map = {"A": 0, "B": 1, "C": 2}
+        type_map = {"rot":0, "grün":1, "blau":2, "gelb":3}
         types = np.array([type_map[t] for t in raw_types], dtype=int)
 
         colors = types_to_colors(types)
