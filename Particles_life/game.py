@@ -155,25 +155,20 @@ class Game:
         self.h = world_height
         self.r_max = r_max
 
-        self.pos = np.random.uniform([0, 0], [self.w, self.h],
-                                     size=(n, 2)).astype(np.float32)
-        self.vel = np.zeros_like(self.pos, dtype=np.float32)
-
-        possible_types = np.array(["A", "B", "C"])
-        self.types = np.random.choice(possible_types, size=n)
+        self.pos, self.vel, self.types = self.init_particles(n, self.w, self.h)
 
         self.friction = 0.99
         self.noise_strength = 0.2
 
         self.matrix = np.array([
-            [0.0,  5.0, -3.0],  
-            [-2.0, 0.0,  4.0],  
-            [3.0, -4.0,  0.0], 
+            [0.0,  5.0, -3.0],
+            [-2.0, 0.0,  4.0],
+            [3.0, -4.0,  0.0],
         ], dtype=float)
-
 
     def step(self, dt=0.01):
         noise = np.random.normal(0.0, self.noise_strength, size=2)
+
         self.pos, self.vel, self.types = update_particles(
             self.pos,
             self.vel,
@@ -194,3 +189,14 @@ class Game:
             "pos": self.pos,
             "types": self.types,
         }
+
+    def init_particles(self, n, width, height):
+        pos = np.random.rand(n, 2) * np.array([width, height], dtype=np.float32)
+
+        vel = np.zeros((n, 2), dtype=np.float32)
+
+
+        type_keys = list(letter_index.keys())
+        types = np.random.choice(type_keys, n)
+
+        return pos, vel, types
