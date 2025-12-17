@@ -1,4 +1,5 @@
 import numpy as np
+import numba
 
 def quadrantisieren(pos, velocities, types, world_width, world_height, r_max):
 
@@ -117,7 +118,7 @@ def calculate_forces(sorted_pos, sorted_vel, sorted_types, cell_starts, cell_cou
                     #velocity_j = sorted_vel[source_idx]
 
                     # Interaktionswert der jeweiligen Interaktion
-                    interaction_matrix_val = interaction_matrix[letter_index.get(ptype_i), letter_index.get(ptype_j)] # wenn interaktionsmatrix wie folgt definiert ist: (Traget-Partikel, Nachbarn-/Einfluss-Partikel)
+                    interaction_matrix_val = interaction_matrix[ptype_i, ptype_j] # wenn interaktionsmatrix wie folgt definiert ist: (Traget-Partikel, Nachbarn-/Einfluss-Partikel)
 
                     # Berechnung des Abstands zwischen den Partikeln
                     richtungs_vector = position_j - position_i
@@ -178,11 +179,6 @@ class Game:
 
     def init_particles(self, n, width, height):
         pos = np.random.rand(n, 2) * np.array([width, height], dtype=np.float32)
-
         vel = np.zeros((n, 2), dtype=np.float32)
-
-
-        type_keys = list(letter_index.keys())
-        types = np.random.choice(type_keys, n)
-
+        types = np.random.randint(0, 4, size=n, dtype=np.int64)  # direkt als ints
         return pos, vel, types
