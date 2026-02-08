@@ -41,8 +41,6 @@ def test_quadrantisieren_logic():
 def test_quadrantisieren_out_of_bounds():
     # Testet den np.clip Schutz gegen Werte außerhalb der Welt
     pos = np.array([[-1.0, -1.0], [20.0, 20.0]])
-    world_width = 10.0
-    r_max = 5.0
     
     # Hier prüfen wir nur, ob es ohne Absturz durchläuft (wegen np.clip)
     _, _, _, _, cell_counts, _, _ = quadrantisieren(
