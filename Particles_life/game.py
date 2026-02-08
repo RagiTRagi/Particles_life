@@ -1,5 +1,4 @@
 import numpy as np
-import numba
 
 def quadrantisieren(pos, velocities, types, world_width, world_height, r_max):
 
