@@ -1,5 +1,5 @@
 import numpy as np
-from Particles_life.game import quadrantisieren
+from p_life.game import quadrantisieren
 
 def test_quadrantisieren_logic():
     pos = np.array([

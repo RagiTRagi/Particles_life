@@ -40,9 +40,18 @@ class ParticleCanvas(scene.SceneCanvas):
 
     def _draw_snapshot(self, snap):
         pos = np.asarray(snap["pos"], dtype=np.float32)
-        types = np.asarray(snap["types"], dtype=int)  # sind schon ints
+        raw_types = np.asarray(snap["types"]) 
+
+        type_map = {"rot":0, "grün":1, "blau":2, "gelb":3}
+        types = np.array([type_map[t] for t in raw_types], dtype=int)
+
         colors = types_to_colors(types)
-        self.markers.set_data(pos=pos, face_color=colors, size=3.0)
+
+        self.markers.set_data(
+            pos=pos,
+            face_color=colors,
+            size=3.0,
+        )
 
 
     def on_timer(self, event):
@@ -63,5 +72,3 @@ if __name__ == "__main__":
     canvas.show()
 
     app.run()
-
-
