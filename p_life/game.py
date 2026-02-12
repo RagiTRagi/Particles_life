@@ -145,10 +145,14 @@ def calculate_forces(sorted_pos, sorted_types,
                         rel_y = pos_b[1] - pos_a[1]
                         
                         # For torus-world: Shortest distance considering wrap-around
-                        if rel_x > 0.5 * world_width: rel_x -= world_width
-                        elif rel_x < -0.5 * world_width: rel_x += world_width
-                        if rel_y > 0.5 * world_height: rel_y -= world_height
-                        elif rel_y < -0.5 * world_height: rel_y += world_height
+                        if rel_x > 0.5 * world_width: 
+                            rel_x -= world_width
+                        elif rel_x < -0.5 * world_width: 
+                            rel_x += world_width
+                        if rel_y > 0.5 * world_height: 
+                            rel_y -= world_height
+                        elif rel_y < -0.5 * world_height: 
+                            rel_y += world_height
                         
                         dist_sq = rel_x*rel_x + rel_y*rel_y
                         
