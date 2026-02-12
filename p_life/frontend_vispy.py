@@ -72,5 +72,3 @@ if __name__ == "__main__":
     canvas.show()
 
     app.run()
-
-
