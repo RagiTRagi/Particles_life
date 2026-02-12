@@ -48,10 +48,11 @@ def update_particles(pos, vel, types, world_width, world_height, r_max, dt, fric
     sorted_pos, sorted_vel, sorted_types, cell_starts, cell_counts, cols, rows = quadrantisieren(pos, vel, types, world_width, world_height, r_max)
 
     # Kräfte berechnen
-    forces = calculate_forces(sorted_pos, sorted_vel, sorted_types, cell_starts, cell_counts, cols, rows, matrix, noise, r_max)
+    forces = calculate_forces(sorted_pos, sorted_types, cell_starts, cell_counts, cols, rows, matrix, r_max)
 
     # Neue Velocity berechnen
     sorted_vel += forces * dt
+    sorted_vel += noise
     sorted_vel *= friction
 
     # Position updaten
@@ -60,78 +61,129 @@ def update_particles(pos, vel, types, world_width, world_height, r_max, dt, fric
     # Ausgabe von Position, Geschwindigkeit und Typ
     return sorted_pos, sorted_vel, sorted_types
 # für die Matrix Conversion
-letter_index = {"rot":0, "grün":1, "blau":2, "gelb":3}
 
-def calculate_forces(sorted_pos, sorted_vel, sorted_types, cell_starts, cell_counts, cols, rows, interaction_matrix, noise_param, r_max):
+letter_index = {"blau":0, "gelb":1, "grün":2, "rot":3} # 0 = rot, 1 = grün, 2 = gelb, 3 = blau
+sorted_colors = ["blau", "gelb", "gruen", "rot"]
+
+def calculate_forces(sorted_pos, sorted_types, cell_starts, cell_counts, cols, rows, interaction_matrix, r_max):
 
     # Grids filtern, die mind. 1 Partikel beinhalten & Initialisierung von array, welches die Gesamtkräfte jedes Partikels beinhaltet
     filled_grids = np.where(cell_counts > 0)[0]
     total_forces = np.zeros_like(sorted_pos, dtype=float)
-    
+    #print(sorted_types[:10])
+    sorted_types = np.searchsorted(sorted_colors, sorted_types)
     # Iteration durch jedes befüllte target cell_grid und Berechnung der Nachbarn(oben/unten/links/rechts)
+    # partikel in einem grid haben alle die selben nachbargrids und somit die selben partikel
     for cell_id in filled_grids:
         n_ids = [cell_id]
         x = cell_id % cols
         y = cell_id // cols
 
+        # if evtl. mit masken ersetzen
         if x < cols - 1:
-            right_n = cell_id + 1
+            right_n = cell_id + 1         
             n_ids.append(right_n)
         if x > 0:
             left_n = cell_id - 1
             n_ids.append(left_n)
+        if x > 0 and y > 0:
+            left_upper_diagonal_n = cell_id - (cols + 1)
+            n_ids.append(left_upper_diagonal_n)
+        if x > 0 and y < rows - 1:
+            left_lower_diagonal_n = cell_id + (cols - 1)
+            n_ids.append(left_lower_diagonal_n)
+        if x < cols - 1 and y > 0:
+            right_upper_diagonal_n = cell_id - (cols - 1)
+            n_ids.append(right_upper_diagonal_n)
+        if x < cols - 1 and y < rows - 1:
+            right_lower_diagonal_n = cell_id + (cols + 1)
+            n_ids.append(right_lower_diagonal_n)
         if y > 0:
             upper_n = cell_id - cols
             n_ids.append(upper_n)
         if y < rows - 1:
             lower_n = cell_id + cols
             n_ids.append(lower_n)
-        
-        # Indexe der Partikel im target Grid 
+        n_ids = np.array(n_ids)
+        # Indizes der Partikel im target Grid 
         s0 = cell_starts[cell_id]
         c0 = cell_counts[cell_id]
-        target_particles = range(s0, s0+c0)
-        
+        target_particles = np.array(range(s0, s0+c0))
+        # print(target_particles.shape)
         # Iteration über jedes Partikel in dem target grid
-        for target_idx in target_particles:
+        
+        #broadcasted_noise = np.broadcast_to(noise_param, (len(target_particles), 2))
+        #gesamtkraft = broadcasted_noise.copy()  #[None,:] #additive Zufallsbewegung, wie bei Brown'sche Molekularbewegungen -> noise muss demnach ein Vektor sein
+        gesamtkraft = 0 #noise_param[target_particles].copy()
+        #position_i = np.array(sorted_pos[target_particles])
+        #ptype_i = np.array(sorted_types[target_particles])
+        #print(ptype_i.shape)
+        #velocity_i = sorted_vel[target_idx]
+        #print("Gesamtkraft:", gesamtkraft.shape)
+            
+            
+        # Iteration über jedes Nachbar-Grid
+            
+        # Indizes der Partikel des Nachbar-Grids
+        s = cell_starts[n_ids]
+        c = cell_counts[n_ids]
+        source = np.concatenate([np.arange(start, start + count) for start, count in zip(s, c)])[:, None]
 
-            gesamtkraft = noise_param # additive Zufallsbewegung, wie bei Brown'sche Molekularbewegungen -> noise muss demnach ein Vektor sein
-            position_i = sorted_pos[target_idx]
-            ptype_i = sorted_types[target_idx]
-            #velocity_i = sorted_vel[target_idx]
+        source_particles = np.broadcast_to(source, (len(source), len(target_particles)))
+        #print("source_particles before mask:", source_particles.shape)
+        #print(source_particles)
+        #print(ptype_i)
+        #print(source_particles.size)
+        #print(target_particles.size)
+        #print(mask1) 
+        #mask1 = ~np.all(np.isclose(source_particles, target_particles), axis=1)
+        #np.any(source_particles != target_particles, axis=1)
+        #print("Maske:", mask1)
+        #print(mask1.shape)
 
-            # Iteration über jedes Nachbar-Grid
-            for n_id in n_ids:
-                # Indexe der Partikel des Nachbar-Grids
-                s = cell_starts[n_id]
-                c = cell_counts[n_id]
-                source_particles = range(s, s+c)
+        
+        if source_particles.shape[0] == 0:
+            total_forces[target_particles] = gesamtkraft
+            continue
+        position_j = sorted_pos[source_particles]
+        ptype_j = sorted_types[source_particles]
+        position_i = sorted_pos[target_particles]
+        ptype_i = sorted_types[target_particles]
+        #print("Target_particle_types:",ptype_i.shape)
+        #print("source particle types:", ptype_j.shape)
+        #print("target_particle Types:",ptype_i)
+        #interaction_pairs = np.stack((np.ones_like(ptype_j)*ptype_i, ptype_j), axis=1)
+        #print(interaction_pairs.shape)
+        interaction_vals = interaction_matrix[ptype_i[None,:], ptype_j]
+        #print("interaction matrix shape:",interaction_matrix.shape)
+        #print(sorted_types[:10])
+        #interaction_vals = interaction_matrix[ptype_i, ptype_j]
+        #print("interaction values:", interaction_vals.shape)
+        richtungs_vector = position_j - position_i
+        #print("RV 1:",richtungs_vector.shape)
+        distance = np.sqrt(richtungs_vector[:,:,0]**2 + richtungs_vector[:,:,1]**2)
+        #print("Distance Vektor:", distance)
+        #print("Distance 1:", distance.shape)
+        mask2 = (distance > 0) & (distance <= r_max)
+        #print(mask2, mask2.shape)
+        #print(mask2)
+        safe_distance = np.where(mask2, distance, 1.0)
+        #print("Distance 2:", distance_.shape)
+        richtungs_vector_ = richtungs_vector * mask2[:, :, None]
+        #print("RV 2:", richtungs_vector_.shape)
+        #print(position_j.shape, position_i.shape, richtungs_vector.shape)
+        n_vectors = richtungs_vector_/safe_distance[:,:,None] # Richtungsvektor bei Distanz sowieso 0  
+        #print("NV:", n_vectors)
+        #print("NV", n_vectors.shape)
+        #print("(1 - distance_/r_max):", (1 - distance_/r_max))
 
-                # Iteration über Partikel des Nachbar-Grids
-                for source_idx in source_particles:
-                    if target_idx == source_idx:
-                        continue
-
-                    position_j = sorted_pos[source_idx]
-                    ptype_j = sorted_types[source_idx]
-                    #velocity_j = sorted_vel[source_idx]
-
-                    # Interaktionswert der jeweiligen Interaktion
-                    interaction_matrix_val = interaction_matrix[letter_index.get(ptype_i), letter_index.get(ptype_j)] # wenn interaktionsmatrix wie folgt definiert ist: (Traget-Partikel, Nachbarn-/Einfluss-Partikel)
-
-                    # Berechnung des Abstands zwischen den Partikeln
-                    richtungs_vector = position_j - position_i
-                    distance = np.sqrt(richtungs_vector[0]**2 + richtungs_vector[1]**2)
-                    if distance == 0:
-                        continue
-                    n_vector = richtungs_vector/distance
-
-                    # Überprüfung, ob Partikel sich in der maximalen Einflussreichweite befinden
-                    if distance <= r_max:
-                        anziehung_abstoßungskraft = (1 - distance/r_max) * interaction_matrix_val * n_vector # Berechnung der Anziehungs- /Abstoßungskraft 
-                        gesamtkraft += anziehung_abstoßungskraft
-                        
-            total_forces[target_idx] = gesamtkraft
+        w = (1 - safe_distance/r_max) * interaction_vals*mask2
+        #print("W = ",w.shape)
+        anziehung_abstoßungskraft = n_vectors * w[:,:,None]
+        #print(anziehung_abstoßungskraft.shape)
+        gesamtkraft += anziehung_abstoßungskraft.sum(axis=0)
+        #print(gesamtkraft.shape)
+        total_forces[target_particles] = gesamtkraft
     return total_forces
 
 class Game:
@@ -142,19 +194,18 @@ class Game:
 
         self.pos, self.vel, self.types = self.init_particles(n, self.w, self.h)
 
-        self.friction = 0.99
-        self.noise_strength = 0.2
+        self.friction = 0.98
+        self.noise_strength = 1.0
 
         self.matrix = np.array([
-            [0.0,  5.0, -3.0,  2.0],
-            [-2.0, 0.0,  4.0, -1.0],
-            [3.0, -4.0,  0.0,  0.5],
-            [1.0, -2.0,  2.0,  0.0],
+            [ 100.2, -0.8,  0.6, -0.2],  # blau
+            [ 0.6,  100.2, -0.8, -0.2],  # gelb
+            [-0.8,  0.6,  100.2, -0.2],  # grün
+            [-0.2, -0.2, -0.2,  100.4],  # rot
         ], dtype=float)
 
     def step(self, dt=0.01):
-        noise = np.random.normal(0.0, self.noise_strength, size=2)
-
+        noise = np.random.normal(0.0, self.noise_strength, size=(self.pos.shape[0], 2))
         self.pos, self.vel, self.types = update_particles(
             self.pos,
             self.vel,
