@@ -84,8 +84,24 @@ def calculate_forces(sorted_pos, sorted_types,
     Uses "Cell List" approach for efficient neighbor search.
     """
 
-    total_forces = np.zeros((len(sorted_pos), 2), dtype=np.float64) # Array for the total forces in X and Y direction
+    total_forces = np.zeros((len(sorted_pos), 2), dtype=np.float32) # Array for the total forces in X and Y direction
     total_cells = cols * rows
+
+    inv_r_max = np.float32(1.0 / r_max)
+
+    beta = np.float32(0.3)
+    inv_beta = np.float32(1.0 / beta)
+    inv_one_minus_beta = np.float32(1.0 / (1.0 - beta))
+    
+    repulsion_strength = np.float32(2.0)#                          
+    # Tresholf for near interaction
+    repulsion_threshold = np.float32(0.3)
+
+    w_width = np.float32(world_width)
+    w_height = np.float32(world_height)
+    half_w = w_width * 0.5
+    half_h = w_height * 0.5
+    r_max_sq = r_max * r_max
 
     # Parallel computing
     # prange for parallel calculation of forces in each cell
@@ -126,8 +142,8 @@ def calculate_forces(sorted_pos, sorted_types,
                     type_a = sorted_types[idx_a]
                     
                     # Local force accumulator for particle a
-                    force_x_acc = 0.0
-                    force_y_acc = 0.0
+                    force_x_acc = np.float32(0.0)
+                    force_y_acc = np.float32(0.0)
                     
                     # ... interacts with every particle in neighbor_id (b)
                     for j_local in range(count_in_neighbor_cell):
@@ -145,33 +161,29 @@ def calculate_forces(sorted_pos, sorted_types,
                         rel_y = pos_b[1] - pos_a[1]
                         
                         # For torus-world: Shortest distance considering wrap-around
-                        if rel_x > 0.5 * world_width: 
-                            rel_x -= world_width
-                        elif rel_x < -0.5 * world_width: 
-                            rel_x += world_width
-                        if rel_y > 0.5 * world_height: 
-                            rel_y -= world_height
-                        elif rel_y < -0.5 * world_height: 
-                            rel_y += world_height
+                        if rel_x > half_w: 
+                            rel_x -= w_width
+                        elif rel_x < -half_w: 
+                            rel_x += w_width
+                        if rel_y > half_h: 
+                            rel_y -= w_height
+                        elif rel_y < -half_h: 
+                            rel_y += w_height
                         
                         dist_sq = rel_x*rel_x + rel_y*rel_y
                         
                         # Only consider neighbors within r_max
-                        if dist_sq > 0 and dist_sq < r_max*r_max:
+                        if dist_sq > 0 and dist_sq < r_max_sq:
                             dist = np.sqrt(dist_sq)
-                            normalized_dist = dist / r_max
+                            normalized_dist = dist * inv_r_max
                             
                             # Physiks Forula by Lennard-Jones potential inspired:
-                            force_factor = 0.0
-                            
-                            # Tresholf for near interaction
-                            repulsion_threshold = 0.3
+                            force_factor = np.float32(0.0)
 
                             if normalized_dist < repulsion_threshold:
                                 # To close: Strong repulsion (to prevent overlap)
                                 # Prevents particle to clump (idea from pauli principle)
-                                strength = 2.0 
-                                force_factor = (normalized_dist / repulsion_threshold - 1.0) * strength
+                                force_factor = (normalized_dist * inv_beta - 1.0) * repulsion_strength
                                 
                             else:
                                 # FAR RANGE: Matrix Interaction
@@ -180,7 +192,7 @@ def calculate_forces(sorted_pos, sorted_types,
                                 matrix_val = interaction_matrix[type_a, type_b]
                                 
                                 # Scale the matrix interaction by how close we are to the repulsion threshold
-                                pct = (normalized_dist - repulsion_threshold) / (1.0 - repulsion_threshold)
+                                pct = (normalized_dist - repulsion_threshold) * inv_one_minus_beta
                                 
                                 # "Bump" in the curve for close interactions, 
                                 # so that the matrix has more influence when particles are closer (but not too close)
@@ -212,7 +224,7 @@ class Game:
             [ 0.6,  2, -0.8, -0.2],  # gelb
             [-0.8,  0.6,  2, -0.2],  # grün
             [-0.2, -0.2, -0.2,  2],  # rot
-        ], dtype=float)
+        ], dtype=np.float32)
 
     def step(self, dt=0.01): # dt kleiner für Stabilität
         self.pos, self.vel, self.types = update_particles(
