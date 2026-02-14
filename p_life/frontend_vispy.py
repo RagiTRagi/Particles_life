@@ -40,10 +40,7 @@ class ParticleCanvas(scene.SceneCanvas):
 
     def _draw_snapshot(self, snap):
         pos = np.asarray(snap["pos"], dtype=np.float32)
-        raw_types = np.asarray(snap["types"]) 
-
-        type_map = {"rot":0, "grün":1, "blau":2, "gelb":3}
-        types = np.array([type_map[t] for t in raw_types], dtype=int)
+        types = np.asarray(snap["types"], dtype=int)
 
         colors = types_to_colors(types)
 
@@ -62,7 +59,7 @@ class ParticleCanvas(scene.SceneCanvas):
 if __name__ == "__main__":
 
     game = Game(
-        n=500,
+        n=10000,
         world_width=100.0,
         world_height=100.0,
         r_max=5.0,
@@ -72,5 +69,3 @@ if __name__ == "__main__":
     canvas.show()
 
     app.run()
-
-
