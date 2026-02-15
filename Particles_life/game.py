@@ -1,4 +1,5 @@
 import numpy as np
+from numba import njit, prange
 
 def quadrantisieren(pos, velocities, types, world_width, world_height, r_max):
 
@@ -40,113 +41,172 @@ def quadrantisieren(pos, velocities, types, world_width, world_height, r_max):
     cell_starts[unique_ids] = unique_starts
     cell_counts[unique_ids] = unique_counts
 
-    return {
-        "pos": sorted_pos,       # Die sortierten Daten
-        "vel": sorted_vel,
-        "types": sorted_types,
-        "starts": cell_starts,   # Das Inhaltsverzeichnis
-        "counts": cell_counts,   # Wie viele Partikel pro Zelle
-        "cols": cols,
-        "rows": rows
-    }
+    return sorted_pos, sorted_vel, sorted_types, cell_starts, cell_counts, cols, rows
 
-def update_particles(pos, vel, types, world_width, world_height, r_max, dt, friction, noise, matrix):
+def update_particles(pos, vel, types, world_width, world_height, r_max, dt, friction, noise_strength, matrix):
     
     # Grid berechnen
-    grid = quadrantisieren(pos, vel, types, world_width, world_height, r_max)
+    sorted_pos, sorted_vel, sorted_types, cell_starts, cell_counts, cols, rows = quadrantisieren(pos, vel, types, world_width, world_height, r_max)
 
     # Kräfte berechnen
-    forces = calculate_forces(grid, matrix, noise, r_max)
+    forces = calculate_forces(sorted_pos, sorted_types, cell_starts, cell_counts, cols, rows, matrix, r_max, world_width, world_height)
+
+    noise = np.random.normal(0.0, noise_strength, size=sorted_vel.shape)
 
     # Neue Velocity berechnen
-    grid['vel'] += forces * dt
-    grid['vel'] *= friction
+    sorted_vel += forces * dt
+    sorted_vel += noise
+    sorted_vel *= friction
 
     # Position updaten
-    grid['pos'] += grid['vel'] * dt
+    sorted_pos += sorted_vel * dt
 
     # Ausgabe von Position, Geschwindigkeit und Typ
-    return grid['pos'], grid['vel'], grid['types']
-# für die Matrix Conversion
-letter_index = {"A":0, "B":1, "C":2}
+    return sorted_pos, sorted_vel, sorted_types
 
-def calculate_forces(grid, interaction_matrix, noise_param, r_max):
+@njit
+def wrap_coordinate(value, max_value):
+    """
+    Torus-world: If val goes beyond max_val,
+    it wraps around to the beginning.
+    """
+    return value % max_value
 
-    cols = grid['cols']
-    rows = grid['rows']
-    cell_starts = grid['starts']
-    cell_counts = grid['counts']
-    sorted_pos = grid['pos']
-    sorted_types = grid['types']
+@njit(parallel=True, fastmath=True)
+def calculate_forces(sorted_pos, sorted_types, 
+    cell_starts, cell_counts, 
+    cols, rows, 
+    interaction_matrix, r_max, 
+    world_width, world_height
+):
+    """
+    Calculates the forces on each particle based on its neighbors in the grid.
+    Uses "Cell List" approach for efficient neighbor search.
+    """
 
-    # Grids filtern, die mind. 1 Partikel beinhalten & Initialisierung von array, welches die Gesamtkräfte jedes Partikels beinhaltet
-    filled_grids = np.where(cell_counts > 0)[0]
-    total_forces = np.zeros_like(sorted_pos, dtype=float)
+    total_forces = np.zeros((len(sorted_pos), 2), dtype=np.float32) # Array for the total forces in X and Y direction
+    total_cells = cols * rows
+
+    inv_r_max = np.float32(1.0 / r_max)
+
+    beta = np.float32(0.3)
+    inv_beta = np.float32(1.0 / beta)
+    inv_one_minus_beta = np.float32(1.0 / (1.0 - beta))
     
-    # Iteration durch jedes befüllte target cell_grid und Berechnung der Nachbarn(oben/unten/links/rechts)
-    for cell_id in filled_grids:
-        n_ids = [cell_id]
-        x = cell_id % cols
-        y = cell_id // cols
+    repulsion_strength = np.float32(2.0)#                          
+    # Tresholf for near interaction
+    repulsion_threshold = np.float32(0.3)
 
-        if x < cols - 1:
-            right_n = cell_id + 1
-            n_ids.append(right_n)
-        if x > 0:
-            left_n = cell_id - 1
-            n_ids.append(left_n)
-        if y > 0:
-            upper_n = cell_id - cols
-            n_ids.append(upper_n)
-        if y < rows - 1:
-            lower_n = cell_id + cols
-            n_ids.append(lower_n)
+    w_width = np.float32(world_width)
+    w_height = np.float32(world_height)
+    half_w = w_width * 0.5
+    half_h = w_height * 0.5
+    r_max_sq = r_max * r_max
+
+    # Parallel computing
+    # prange for parallel calculation of forces in each cell
+    for cell_id in prange(total_cells):
+
+        # Check if the cell has particles
+        count_in_my_cell = cell_counts[cell_id]
+        if count_in_my_cell == 0:
+            continue
+
+        start_i = cell_starts[cell_id]
         
-        # Indexe der Partikel im target Grid 
-        s0 = cell_starts[cell_id]
-        c0 = cell_counts[cell_id]
-        target_particles = range(s0, s0+c0)
-        
-        # Iteration über jedes Partikel in dem target grid
-        for target_idx in target_particles:
+        # Calculate cell coordinates of the grid
+        cell_x = cell_id % cols
+        cell_y = cell_id // cols
 
-            gesamtkraft = noise_param # additive Zufallsbewegung, wie bei Brown'sche Molekularbewegungen -> noise muss demnach ein Vektor sein
-            position_i = sorted_pos[target_idx]
-            ptype_i = sorted_types[target_idx]
-            #velocity_i = sorted_vel[target_idx]
+        # Loop through neighboring cells
+        for dy in range(-1, 2):
+            for dx in range(-1, 2): 
+                
+                # Coordinates of the neighboring cell with wrap-around for torus-world
+                neighbor_x = wrap_coordinate(cell_x + dx, cols)
+                neighbor_y = wrap_coordinate(cell_y + dy, rows)
+                neighbor_id = neighbor_x + neighbor_y * cols
 
-            # Iteration über jedes Nachbar-Grid
-            for n_id in n_ids:
-                # Indexe der Partikel des Nachbar-Grids
-                s = cell_starts[n_id]
-                c = cell_counts[n_id]
-                source_particles = range(s, s+c)
+                # Check if the neighboring cell has particles
+                count_in_neighbor_cell = cell_counts[neighbor_id]
+                if count_in_neighbor_cell == 0:
+                    continue
 
-                # Iteration über Partikel des Nachbar-Grids
-                for source_idx in source_particles:
-                    if target_idx == source_idx:
-                        continue
+                start_index_neighbor = cell_starts[neighbor_id]
 
-                    position_j = sorted_pos[source_idx]
-                    ptype_j = sorted_types[source_idx]
-                    #velocity_j = sorted_vel[source_idx]
-
-                    # Interaktionswert der jeweiligen Interaktion
-                    interaction_matrix_val = interaction_matrix[letter_index.get(ptype_i), letter_index.get(ptype_j)] # wenn interaktionsmatrix wie folgt definiert ist: (Traget-Partikel, Nachbarn-/Einfluss-Partikel)
-
-                    # Berechnung des Abstands zwischen den Partikeln
-                    richtungs_vector = position_j - position_i
-                    distance = np.sqrt(richtungs_vector[0]**2 + richtungs_vector[1]**2)
-                    if distance == 0:
-                        continue
-                    n_vector = richtungs_vector/distance
-
-                    # Überprüfung, ob Partikel sich in der maximalen Einflussreichweite befinden
-                    if distance <= r_max:
-                        anziehung_abstoßungskraft = (1 - distance/r_max) * interaction_matrix_val * n_vector # Berechnung der Anziehungs- /Abstoßungskraft 
-                        gesamtkraft += anziehung_abstoßungskraft
+                # Calculate interactions between particles in cell_id (a) and neighbor_id (b)
+                # Every particle in cell_id (a) ...
+                for i_local in range(count_in_my_cell):
+                    idx_a = start_i + i_local
+                    pos_a = sorted_pos[idx_a]
+                    type_a = sorted_types[idx_a]
+                    
+                    # Local force accumulator for particle a
+                    force_x_acc = np.float32(0.0)
+                    force_y_acc = np.float32(0.0)
+                    
+                    # ... interacts with every particle in neighbor_id (b)
+                    for j_local in range(count_in_neighbor_cell):
+                        idx_b = start_index_neighbor + j_local
                         
-            total_forces[target_idx] = gesamtkraft
+                        # Skip self-interaction
+                        if idx_a == idx_b:
+                            continue
+                            
+                        pos_b = sorted_pos[idx_b]
+                        type_b = sorted_types[idx_b]
+                        
+                        # Vector from a to b
+                        rel_x = pos_b[0] - pos_a[0]
+                        rel_y = pos_b[1] - pos_a[1]
+                        
+                        # For torus-world: Shortest distance considering wrap-around
+                        if rel_x > half_w: 
+                            rel_x -= w_width
+                        elif rel_x < -half_w: 
+                            rel_x += w_width
+                        if rel_y > half_h: 
+                            rel_y -= w_height
+                        elif rel_y < -half_h: 
+                            rel_y += w_height
+                        
+                        dist_sq = rel_x*rel_x + rel_y*rel_y
+                        
+                        # Only consider neighbors within r_max
+                        if dist_sq > 0 and dist_sq < r_max_sq:
+                            dist = np.sqrt(dist_sq)
+                            normalized_dist = dist * inv_r_max
+                            
+                            # Physiks Forula by Lennard-Jones potential inspired:
+                            force_factor = np.float32(0.0)
+
+                            if normalized_dist < repulsion_threshold:
+                                # To close: Strong repulsion (to prevent overlap)
+                                # Prevents particle to clump (idea from pauli principle)
+                                force_factor = (normalized_dist * inv_beta - 1.0) * repulsion_strength
+                                
+                            else:
+                                # FAR RANGE: Matrix Interaction
+                                # We scale the range [repulsion_threshold ... 1.0] to [0 ... 1]
+                                # to apply the matrix force
+                                matrix_val = interaction_matrix[type_a, type_b]
+                                
+                                # Scale the matrix interaction by how close we are to the repulsion threshold
+                                pct = (normalized_dist - repulsion_threshold) * inv_one_minus_beta
+                                
+                                # "Bump" in the curve for close interactions, 
+                                # so that the matrix has more influence when particles are closer (but not too close)
+                                shape = (1.0 - abs(2.0 * pct - 1.0))
+                                force_factor = matrix_val * shape
+
+                            # Addition of the force contribution from particle b to particle a
+                            force_x_acc += (rel_x / dist) * force_factor
+                            force_y_acc += (rel_y / dist) * force_factor
+
+                    # Sum up all Forces of A
+                    total_forces[idx_a, 0] += force_x_acc
+                    total_forces[idx_a, 1] += force_y_acc
+
     return total_forces
 
 class Game:
@@ -154,49 +214,36 @@ class Game:
         self.w = world_width
         self.h = world_height
         self.r_max = r_max
-
         self.pos, self.vel, self.types = self.init_particles(n, self.w, self.h)
+        self.friction = 0.95 # Etwas weniger Reibung für mehr Bewegung
+        self.noise_strength = 0.1 # Kleineres Rauschen
 
-        self.friction = 0.99
-        self.noise_strength = 0.2
-
+        # Angepasste Matrix (Normale Werte)
         self.matrix = np.array([
-            [0.0,  5.0, -3.0],
-            [-2.0, 0.0,  4.0],
-            [3.0, -4.0,  0.0],
-        ], dtype=float)
+            [ 2, -0.8,  0.6, -0.2],  # blau
+            [ 0.6,  2, -0.8, -0.2],  # gelb
+            [-0.8,  0.6,  2, -0.2],  # grün
+            [-0.2, -0.2, -0.2,  2],  # rot
+        ], dtype=np.float32)
 
-    def step(self, dt=0.01):
-        noise = np.random.normal(0.0, self.noise_strength, size=2)
-
+    def step(self, dt=0.01): # dt kleiner für Stabilität
         self.pos, self.vel, self.types = update_particles(
-            self.pos,
-            self.vel,
-            self.types,
-            self.w,
-            self.h,
-            self.r_max,
-            dt,
-            self.friction,
-            noise,
-            self.matrix,
+            self.pos, self.vel, self.types, self.w, self.h, self.r_max, dt, 
+            self.friction, self.noise_strength, self.matrix
         )
-
+        
+        # Wrap Around (Torus-Welt)
         self.pos[:, 0] = np.mod(self.pos[:, 0], self.w)
         self.pos[:, 1] = np.mod(self.pos[:, 1], self.h)
-
-        return {
-            "pos": self.pos,
-            "types": self.types,
-        }
+        
+        return {"pos": self.pos, "types": self.types}
 
     def init_particles(self, n, width, height):
         pos = np.random.rand(n, 2) * np.array([width, height], dtype=np.float32)
-
         vel = np.zeros((n, 2), dtype=np.float32)
-
-
-        type_keys = list(letter_index.keys())
-        types = np.random.choice(type_keys, n)
+        types = np.random.randint(0, 4, size=n, dtype=int)
 
         return pos, vel, types
+    
+    def set_force(self, row: int, col: int, force: float) -> None:
+        self.matrix[row, col] = np.float32(force)

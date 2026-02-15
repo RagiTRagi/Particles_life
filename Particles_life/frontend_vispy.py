@@ -1,21 +1,24 @@
 import numpy as np
-from vispy import app, scene
 from game import Game
+from vispy import scene
 
-TYPE_COLORS = np.array([
-    [1.0, 0.2, 0.2, 1.0],  # rot
-    [0.2, 1.0, 0.2, 1.0],  # grün
-    [0.2, 0.2, 1.0, 1.0],  # blau
-    [1.0, 1.0, 0.2, 1.0],  # gelb
+colour_type = np.array([
+    [0.2, 0.2, 1.0, 1.0],  # blau (0)
+    [1.0, 1.0, 0.2, 1.0],  # gelb (1)
+    [0.2, 1.0, 0.2, 1.0],  # grün (2)
+    [1.0, 0.2, 0.2, 1.0],  # rot  (3)
 ], dtype=np.float32)
+
+type_map = {"a": 0, "b": 1, "c": 2, "d": 3}
+
 
 def types_to_colors(types):
     types = list(types)  
     colors = []
 
     for t in types:
-        i = t % len(TYPE_COLORS) 
-        colors.append(TYPE_COLORS[i])
+        i = t % len(colour_type) 
+        colors.append(colour_type[i])
 
     return np.array(colors, dtype=np.float32)
 
@@ -33,44 +36,30 @@ class ParticleCanvas(scene.SceneCanvas):
 
         self.markers = scene.Markers(parent=self.view.scene)
         snap = self.game.step(0.0)
-        self._draw_snapshot(snap)
-        self.timer = app.Timer(interval=1/120, connect=self.on_timer, start=True)
-
+        self.draw_snapshot(snap)
         self.freeze()
 
-    def _draw_snapshot(self, snap):
+    def draw_snapshot(self, snap):
         pos = np.asarray(snap["pos"], dtype=np.float32)
-        raw_types = np.asarray(snap["types"]) 
+        raw_types = np.asarray(snap["types"])
 
-        type_map = {"A": 0, "B": 1, "C": 2}
-        types = np.array([type_map[t] for t in raw_types], dtype=int)
+        if raw_types.dtype.kind in "iu":
+            types = raw_types.astype(np.int32)
+        else:
+            def norm(t):
+                if isinstance(t, (bytes, np.bytes_)): # byte -> string
+                    t = t.decode("utf-8", errors="ignore")
+                return str(t).strip().lower()
+
+            types = np.array([type_map[norm(t)] for t in raw_types], dtype=np.int32)
 
         colors = types_to_colors(types)
+        self.markers.set_data(pos=pos, face_color=colors, size=3.0)
 
-        self.markers.set_data(
-            pos=pos,
-            face_color=colors,
-            size=3.0,
-        )
+    def step_and_draw(self):
+            snap = self.game.step(self.dt)
+            self.draw_snapshot(snap)
+            self.update()
 
-
-    def on_timer(self, event):
-        snap = self.game.step(self.dt)
-        self._draw_snapshot(snap)
-
-
-if __name__ == "__main__":
-
-    game = Game(
-        n=2000,
-        world_width=100.0,
-        world_height=100.0,
-        r_max=5.0,
-    )
-
-    canvas = ParticleCanvas(game, world_width=game.w, world_height=game.h)
-    canvas.show()
-
-    app.run()
 
 
