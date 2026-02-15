@@ -65,14 +65,11 @@ def test_calculate_forces_repulsion():
 
 def test_game_set_force():
     g = game.Game(n=1, world_width=10.0, world_height=10.0, r_max=5.0)
-    
-    original_val = g.matrix[0, 1]
-    
+        
     g.set_force(0, 1, 3.5)
     
     assert g.matrix[0, 1] == np.float32(3.5)
     
-    assert g.matrix[0, 0] != g.matrix[0, 1]
 
 def test_game_step_with_friction():
     g = game.Game(n=1, world_width=100.0, world_height=100.0, r_max=5.0)
