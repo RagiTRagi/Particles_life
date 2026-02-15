@@ -1,6 +1,5 @@
 import numpy as np
 from vispy import scene
-from game import Game
 
 colour_type = np.array([
     [0.2, 0.2, 1.0, 1.0],  # blue
