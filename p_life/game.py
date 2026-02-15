@@ -239,7 +239,7 @@ class Game:
         return {"pos": self.pos, "types": self.types}
 
     def init_particles(self, n, width, height):
-        pos = np.random.rand(n, 2) * np.array([width, height], dtype=np.float32)
+        pos = np.random.rand(n, 2).astype(np.float32) * np.array([width, height], dtype=np.float32)
         vel = np.zeros((n, 2), dtype=np.float32)
         types = np.random.randint(0, 4, size=n, dtype=int)
 
