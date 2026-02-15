@@ -2,10 +2,8 @@ from PySide6 import QtWidgets, QtCore
 from PySide6.QtCore import Qt
 
 try:
-    from .game import Game
     from .frontend_vispy import ParticleCanvas
 except ImportError:
-    from game import Game
     from frontend_vispy import ParticleCanvas
 
 
