@@ -244,3 +244,6 @@ class Game:
         types = np.random.randint(0, 4, size=n, dtype=int)
 
         return pos, vel, types
+
+    def set_force(self, row: int, col: int, force: float) -> None:
+        self.matrix[row, col] = np.float32(force)
