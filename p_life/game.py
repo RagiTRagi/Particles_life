@@ -136,7 +136,7 @@ def calculate_forces(sorted_pos, sorted_types,
             count_in_neighbor_cell = cell_counts[neighbor_id] # 1d array als index auf weiterem 1d array ergibt 1d array
             #mask = (count_in_neighbor_cell != 0)
             #count_in_neighbor_cell = count_in_neighbor_cell[mask]
-            if np.any(count_in_neighbor_cell) == 0: # array und int vergleich geht nicht deswegen ggfs. mit .any()/.all()
+            if count_in_neighbor_cell == 0: # array und int vergleich geht nicht deswegen ggfs. mit .any()/.all()
                 continue
             
 
@@ -208,8 +208,8 @@ def calculate_forces(sorted_pos, sorted_types,
                             force_factor = matrix_val * shape
 
                                 # Addition of the force contribution from particle b to particle a
-                    force_x_acc += (rel_x / dist) * force_factor
-                    force_y_acc += (rel_y / dist) * force_factor
+                        force_x_acc += (rel_x / dist) * force_factor
+                        force_y_acc += (rel_y / dist) * force_factor
 
                         # Sum up all Forces of A
                 total_forces[idx_a, 0] += force_x_acc # hier nochmal schauen wegen Dimensionen
