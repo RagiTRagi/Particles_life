@@ -93,7 +93,7 @@ def calculate_forces(sorted_pos, sorted_types,
     inv_beta = np.float32(1.0 / beta)
     inv_one_minus_beta = np.float32(1.0 / (1.0 - beta))
     
-    repulsion_strength = np.float32(2.0)#                          
+    repulsion_strength = np.float32(2.0)                           
     # Threshold for near interaction
     repulsion_threshold = np.float32(0.3)
 
@@ -103,6 +103,7 @@ def calculate_forces(sorted_pos, sorted_types,
     half_h = w_height * 0.5
     r_max_sq = r_max * r_max
     
+    # offsets directly ready as tuples
     dy = (-1, -1, -1, 0, 0, 0, 1, 1, 1)
     dx = (-1, 0, 1, -1, 0, 1, -1, 0, 1)
 
@@ -121,10 +122,9 @@ def calculate_forces(sorted_pos, sorted_types,
         cell_x = cell_id % cols
         cell_y = cell_id // cols
 
-        
-        
         # Loop through neighboring cells
         for i in range(9):
+            
             # Coordinates of the neighboring cell with wrap-around for torus-world
             neighbor_x = wrap_coordinate(cell_x + dy[i], cols)
             neighbor_y = wrap_coordinate(cell_y + dx[i], rows) 
@@ -135,10 +135,12 @@ def calculate_forces(sorted_pos, sorted_types,
             if count_in_neighbor_cell == 0:
                 continue
             
-
+            # Calculate necessary boundaries for each neighbor cell
             start_b = cell_starts[neighbor_id]
             count_b = cell_counts[neighbor_id]
-            end_b = start_b + count_b  
+            end_b = start_b + count_b
+            
+            # Slicing of particle positions/types that are within the neighbor cell
             pos_b = sorted_pos[start_b:end_b] 
             types_b = sorted_types[start_b:end_b]
             
@@ -152,9 +154,7 @@ def calculate_forces(sorted_pos, sorted_types,
                 # Local force accumulator for particle a
                 force_x_acc = np.float32(0.0)
                 force_y_acc = np.float32(0.0)
-                        
-                
-                            
+                                  
                 # Vectors from a to b
                 rels = pos_b - pos_a
                 rel_x = rels[:, 0]
@@ -166,23 +166,29 @@ def calculate_forces(sorted_pos, sorted_types,
                             
                 dists_sq = rel_x*rel_x + rel_y*rel_y
                 
-                force_factor = np.float32(0.0)
-                
-                # Physics Formula inspired by Lennard-Jones potential:
+                # Iteration over particles in neighbor cell
                 for j in range(dists_sq.shape[0]):
                     
                     dist_sq = dists_sq[j]
                     
+                    # Only consider neighbors within r_max for further calculation
                     if dist_sq <= 0 or dist_sq >= r_max_sq:
                         continue
+                    
                     dist = np.sqrt(dist_sq)
                     normalized_dist = dist * inv_r_max
                     
+                    # Physics Formula inspired by Lennard-Jones potential:
+                    force_factor = np.float32(0.0)
+                    
                     if normalized_dist < repulsion_threshold:
-                        # To close: Strong repulsion (to prevent overlap)
-                        # Prevents particle to clump (idea from pauli principle)
+                        # Too close: Strong repulsion (to prevent overlap)
+                        # Prevents particles from clumping (idea from pauli principle)
                         force_factor = (normalized_dist * inv_beta - 1.0) * repulsion_strength
                     else:
+                        # FAR RANGE: Matrix Interaction
+                        # We scale the range [repulsion_threshold ... 1.0] to [0 ... 1]
+                        # to apply the matrix force
                         type_b = types_b[j]
                         matrix_val = interaction_matrix[type_a, type_b]
                                 
@@ -193,7 +199,8 @@ def calculate_forces(sorted_pos, sorted_types,
                         # so that the matrix has more influence when particles are closer (but not too close)
                         shape = (1.0 - abs(2.0 * pct - 1.0))
                         force_factor = matrix_val * shape
-                        
+                    
+                    # Addition of the force contribution from particle b to particle a
                     force_x_acc += (rel_x[j] / dist) * force_factor
                     force_y_acc += (rel_y[j] / dist) * force_factor
                     
