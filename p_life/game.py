@@ -94,7 +94,7 @@ def calculate_forces(sorted_pos, sorted_types,
     inv_one_minus_beta = np.float32(1.0 / (1.0 - beta))
     
     repulsion_strength = np.float32(2.0)#                          
-    # Tresholf for near interaction
+    # Threshold for near interaction
     repulsion_threshold = np.float32(0.3)
 
     w_width = np.float32(world_width)
@@ -102,6 +102,9 @@ def calculate_forces(sorted_pos, sorted_types,
     half_w = w_width * 0.5
     half_h = w_height * 0.5
     r_max_sq = r_max * r_max
+    
+    dy = (-1, -1, -1, 0, 0, 0, 1, 1, 1)
+    dx = (-1, 0, 1, -1, 0, 1, -1, 0, 1)
 
     # Parallel computing
     # prange for parallel calculation of forces in each cell
@@ -118,152 +121,85 @@ def calculate_forces(sorted_pos, sorted_types,
         cell_x = cell_id % cols
         cell_y = cell_id // cols
 
-        dy = np.array([-1, -1, -1, 0, 0, 0, 1, 1, 1], dtype=np.int64)
-        dx = np.array([-1, 0, 1, -1, 0, 1, -1, 0, 1], dtype=np.int64)
+        
         
         # Loop through neighboring cells
         for i in range(9):
             # Coordinates of the neighboring cell with wrap-around for torus-world
-            neighbor_x = wrap_coordinate(cell_x + dy[i], cols) # wrap_coordinate muss nicht verändert werden
-            neighbor_y = wrap_coordinate(cell_y + dx[i], rows) # neighbor_x/y sind jeweils arrays 
-            neighbor_id = neighbor_x + neighbor_y * cols # das wird ein 1d array mit 9 elementen
+            neighbor_x = wrap_coordinate(cell_x + dy[i], cols)
+            neighbor_y = wrap_coordinate(cell_y + dx[i], rows) 
+            neighbor_id = neighbor_x + neighbor_y * cols
 
-                    # Check if the neighboring cell has particles
-            count_in_neighbor_cell = cell_counts[neighbor_id] # 1d array als index auf weiterem 1d array ergibt 1d array
-            #mask = (count_in_neighbor_cell != 0)
-            #count_in_neighbor_cell = count_in_neighbor_cell[mask]
-            if count_in_neighbor_cell == 0: # array und int vergleich geht nicht deswegen ggfs. mit .any()/.all()
+            # Check if the neighboring cell has particles
+            count_in_neighbor_cell = cell_counts[neighbor_id]
+            if count_in_neighbor_cell == 0:
                 continue
             
 
-            start_index_neighbor = cell_starts[neighbor_id]#[mask]
-
+            start_b = cell_starts[neighbor_id]
+            count_b = cell_counts[neighbor_id]
+            end_b = start_b + count_b  
+            pos_b = sorted_pos[start_b:end_b] 
+            types_b = sorted_types[start_b:end_b]
+            
             # Calculate interactions between particles in cell_id (a) and neighbor_id (b)
             # Every particle in cell_id (a) ...
-            for i_local in range(count_in_my_cell): # mit np.arange arbeiten und aus dem int count_in_my_cell ein array machen
-                idx_a = start_i + i_local #i_local mit diesem array ersetzen
+            for i_local in range(count_in_my_cell):
+                idx_a = start_i + i_local 
                 pos_a = sorted_pos[idx_a] 
                 type_a = sorted_types[idx_a]
                         
-                        # Local force accumulator for particle a
-                force_x_acc = np.float32(0.0) # statt int, zwei arrays np.zeors_like() -> so lang wie anzahl der partikel im cell
+                # Local force accumulator for particle a
+                force_x_acc = np.float32(0.0)
                 force_y_acc = np.float32(0.0)
                         
-                        # ... interacts with every particle in neighbor_id (b)
-                #for j_local in range(count_in_neighbor_cell): # count_in_neighborcell ist ein array mit den counts
-                    #idx_b = start_index_neighbor + j_local # j_local ersetzen mit count in neighbro cell array
-                            
-                            # Skip self-interaction
-                    #if idx_a == idx_b: # idx a und b haben untersch. längen deswegen evtl. mit broadcasting array a gegen jedes element in b prüfen oder vice versa
-                    #    continue
-                start_b = cell_starts[neighbor_id]
-                count_b = cell_counts[neighbor_id]
-                end_b = start_b + count_b  
                 
-                pos_b = sorted_pos[start_b:end_b] 
-                types_b = sorted_types[start_b:end_b]
                             
                 # Vectors from a to b
                 rels = pos_b - pos_a
                 rel_x = rels[:, 0]
                 rel_y = rels[:, 1]
                 
-                mask1 = (rel_x > half_w)
-                rel_x[mask1] -= w_width
-                mask2 = (rel_x < -half_w)
-                rel_x[mask2] += w_width
-                mask3 = (rel_y > half_h) 
-                rel_y[mask3] -= w_height
-                mask4 = (rel_y < -half_h)
-                rel_y[mask4] += w_height
                 # For torus-world: Shortest distance considering wrap-around
-                #if rel_x > half_w: # hier mit masken arbeiten weil conditin zwischen int und array nicht funktionieren
-                #    rel_x -= w_width # das soll auch nur auf bestimmte elemente in rel_x angewandt werden nicht auf alle
-                #elif rel_x < -half_w: 
-                #    rel_x += w_width
-                #if rel_y > half_h:                         
-                #    rel_y -= w_height
-                #elif rel_y < -half_h: 
-                #    rel_y += w_height
+                rel_x = rel_x - w_width*(rel_x > half_w) + w_width*(rel_x < -half_w)
+                rel_y = rel_y - w_height*(rel_y > half_h) + w_height*(rel_y < -half_h)
                             
-                dists_sq = rel_x*rel_x + rel_y*rel_y # kann glaube ich so bleiben, muss schauen
-                            
-                            # Only consider neighbors within r_max
-                mask_r = (dists_sq > 0) & (dists_sq < r_max_sq)
-                    #if dist_sq > 0 and dist_sq < r_max_sq: # mit Maske ersetzen und mit array multiplizieren
-                
-                dist = np.sqrt(dists_sq)
-                normalized_dists = dist * inv_r_max
+                dists_sq = rel_x*rel_x + rel_y*rel_y
                 
                 force_factor = np.float32(0.0)
+                
                 # Physics Formula inspired by Lennard-Jones potential:
-                for j in range(normalized_dists.shape[0]):
+                for j in range(dists_sq.shape[0]):
                     
                     dist_sq = dists_sq[j]
                     
                     if dist_sq <= 0 or dist_sq >= r_max_sq:
                         continue
-                    
-                    normalized_dist = normalized_dists[j]
+                    dist = np.sqrt(dist_sq)
+                    normalized_dist = dist * inv_r_max
                     
                     if normalized_dist < repulsion_threshold:
-                                # To close: Strong repulsion (to prevent overlap)
-                                # Prevents particle to clump (idea from pauli principle)
+                        # To close: Strong repulsion (to prevent overlap)
+                        # Prevents particle to clump (idea from pauli principle)
                         force_factor = (normalized_dist * inv_beta - 1.0) * repulsion_strength
                     else:
                         type_b = types_b[j]
                         matrix_val = interaction_matrix[type_a, type_b]
                                 
-                                # Scale the matrix interaction by how close we are to the repulsion threshold
+                        # Scale the matrix interaction by how close we are to the repulsion threshold
                         pct = (normalized_dist - repulsion_threshold) * inv_one_minus_beta
                                 
-                                # "Bump" in the curve for close interactions, 
-                                # so that the matrix has more influence when particles are closer (but not too close)
+                        # "Bump" in the curve for close interactions, 
+                        # so that the matrix has more influence when particles are closer (but not too close)
                         shape = (1.0 - abs(2.0 * pct - 1.0))
                         force_factor = matrix_val * shape
                         
-                    force_x_acc += (rel_x[j] / dist[j]) * force_factor
-                    force_y_acc += (rel_y[j] / dist[j]) * force_factor
-                         
+                    force_x_acc += (rel_x[j] / dist) * force_factor
+                    force_y_acc += (rel_y[j] / dist) * force_factor
                     
-                 # muss array sein
-                #mask_rep = mask_r & (normalized_dist < repulsion_threshold)
-                #mask_attr = mask_r & (normalized_dist > repulsion_threshold)
-                    #if normalized_dist < repulsion_threshold:
-                # Too close: Strong repulsion (to prevent overlap)
-                # Prevents particle to clump (idea from pauli principle)
-                #force_factor[mask_rep] = (normalized_dist[mask_rep] * inv_beta - 1.0) * repulsion_strength
-                #matrix_val = interaction_matrix[type_a, types_b]
-                #pct = (normalized_dist - repulsion_threshold) * inv_one_minus_beta
-                #shape = (1.0 - np.abs(2.0 * pct - 1.0))
-                #force_factor[mask_attr] = matrix_val[mask_attr] * shape[mask_attr]
-                        #else:
-                        # FAR RANGE: Matrix Interaction
-                        # We scale the range [repulsion_threshold ... 1.0] to [0 ... 1]
-                        # to apply the matrix force
-                    
-                        #else:
-                                # FAR RANGE: Matrix Interaction
-                                # We scale the range [repulsion_threshold ... 1.0] to [0 ... 1]
-                                # to apply the matrix force
-                            
 
-                            # Addition of the force contribution from particle b to particle a
-                            
-                                    
-                                    # Scale the matrix interaction by how close we are to the repulsion threshold
-                            
-                                    
-                                    # "Bump" in the curve for close interactions, 
-                                    # so that the matrix has more influence when particles are closer (but not too close)
-                            
-
-                                # Addition of the force contribution from particle b to particle a
-                #force_x_acc += np.sum((rel_x / dist) * force_factor)
-                #force_y_acc += np.sum((rel_y / dist) * force_factor)
-
-                        # Sum up all Forces of A
-                total_forces[idx_a, 0] += force_x_acc # hier nochmal schauen wegen Dimensionen
+                # Sum up all Forces of A
+                total_forces[idx_a, 0] += force_x_acc
                 total_forces[idx_a, 1] += force_y_acc
 
     return total_forces
