@@ -119,50 +119,51 @@ def calculate_forces(sorted_pos, sorted_types,
         cell_y = cell_id // cols
 
         # Loop through neighboring cells
-        for dy in range(-1, 2):
-            for dx in range(-1, 2): 
+        for dy in range(-1, 2): # ab hier broadcasting sinnvoll 
+            for dx in range(-1, 2): # dy und dx arrays mit elementen [-1, 0, 1] -> 9 kombinationen enstehen
+                # mit numpy alle kombinationen zwischen dy und dx
                 
                 # Coordinates of the neighboring cell with wrap-around for torus-world
-                neighbor_x = wrap_coordinate(cell_x + dx, cols)
-                neighbor_y = wrap_coordinate(cell_y + dy, rows)
-                neighbor_id = neighbor_x + neighbor_y * cols
+                neighbor_x = wrap_coordinate(cell_x + dx, cols) # wrap_coordinate muss nicht verändert werden
+                neighbor_y = wrap_coordinate(cell_y + dy, rows) # neighbor_x/y sind jeweils arrays 
+                neighbor_id = neighbor_x + neighbor_y * cols # das wird ein 1d array mit 9 elementen
 
                 # Check if the neighboring cell has particles
-                count_in_neighbor_cell = cell_counts[neighbor_id]
-                if count_in_neighbor_cell == 0:
+                count_in_neighbor_cell = cell_counts[neighbor_id] # 1d array als index auf weiterem 1d array ergibt 1d array
+                if count_in_neighbor_cell == 0: # array und int vergleich geht nicht deswegen ggfs. mit .any()/.all()
                     continue
 
                 start_index_neighbor = cell_starts[neighbor_id]
 
                 # Calculate interactions between particles in cell_id (a) and neighbor_id (b)
                 # Every particle in cell_id (a) ...
-                for i_local in range(count_in_my_cell):
-                    idx_a = start_i + i_local
-                    pos_a = sorted_pos[idx_a]
+                for i_local in range(count_in_my_cell): # mit np.arange arbeiten und aus dem int count_in_my_cell ein array machen
+                    idx_a = start_i + i_local #i_local mit diesem array ersetzen
+                    pos_a = sorted_pos[idx_a] 
                     type_a = sorted_types[idx_a]
                     
                     # Local force accumulator for particle a
-                    force_x_acc = np.float32(0.0)
+                    force_x_acc = np.float32(0.0) # statt int, zwei arrays np.zeors_like() -> so lang wie anzahl der partikel im cell
                     force_y_acc = np.float32(0.0)
                     
                     # ... interacts with every particle in neighbor_id (b)
-                    for j_local in range(count_in_neighbor_cell):
-                        idx_b = start_index_neighbor + j_local
+                    for j_local in range(count_in_neighbor_cell): # count_in_neighborcell ist ein array mit den counts
+                        idx_b = start_index_neighbor + j_local # j_local ersetzen mit count in neighbro cell array
                         
                         # Skip self-interaction
-                        if idx_a == idx_b:
+                        if idx_a == idx_b: # idx a und b haben untersch. längen deswegen evtl. mit broadcasting array a gegen jedes element in b prüfen oder vice versa
                             continue
                             
-                        pos_b = sorted_pos[idx_b]
+                        pos_b = sorted_pos[idx_b] 
                         type_b = sorted_types[idx_b]
                         
                         # Vector from a to b
-                        rel_x = pos_b[0] - pos_a[0]
-                        rel_y = pos_b[1] - pos_a[1]
+                        rel_x = pos_b[0] - pos_a[0] # anders slicen
+                        rel_y = pos_b[1] - pos_a[1] # '' ''
                         
                         # For torus-world: Shortest distance considering wrap-around
-                        if rel_x > half_w: 
-                            rel_x -= w_width
+                        if rel_x > half_w: # hier mit masken arbeiten weil conditin zwischen int und array nicht funktionieren
+                            rel_x -= w_width # das soll auch nur auf bestimmte elemente in rel_x angewandt werden nicht auf alle
                         elif rel_x < -half_w: 
                             rel_x += w_width
                         if rel_y > half_h: 
@@ -170,15 +171,15 @@ def calculate_forces(sorted_pos, sorted_types,
                         elif rel_y < -half_h: 
                             rel_y += w_height
                         
-                        dist_sq = rel_x*rel_x + rel_y*rel_y
+                        dist_sq = rel_x*rel_x + rel_y*rel_y # kann glaube ich so bleiben, muss schauen
                         
                         # Only consider neighbors within r_max
-                        if dist_sq > 0 and dist_sq < r_max_sq:
+                        if dist_sq > 0 and dist_sq < r_max_sq: # mit Maske ersetzen und mit array multiplizieren
                             dist = np.sqrt(dist_sq)
                             normalized_dist = dist * inv_r_max
                             
                             # Physiks Forula by Lennard-Jones potential inspired:
-                            force_factor = np.float32(0.0)
+                            force_factor = np.float32(0.0) # muss array sein
 
                             if normalized_dist < repulsion_threshold:
                                 # To close: Strong repulsion (to prevent overlap)
@@ -204,7 +205,7 @@ def calculate_forces(sorted_pos, sorted_types,
                             force_y_acc += (rel_y / dist) * force_factor
 
                     # Sum up all Forces of A
-                    total_forces[idx_a, 0] += force_x_acc
+                    total_forces[idx_a, 0] += force_x_acc # hier nochmal schauen wegen Dimensionen
                     total_forces[idx_a, 1] += force_y_acc
 
     return total_forces
