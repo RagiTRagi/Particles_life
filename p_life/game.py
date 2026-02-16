@@ -120,14 +120,10 @@ def calculate_forces(sorted_pos, sorted_types,
 
         dy = np.array([-1, -1, -1, 0, 0, 0, 1, 1, 1], dtype=np.int64)
         dx = np.array([-1, 0, 1, -1, 0, 1, -1, 0, 1], dtype=np.int64)
-        #dy_dx_combinations = np.array(np.meshgrid(dy,dx)).T.reshape((-1, 2))
+        
         # Loop through neighboring cells
-        #for dy in range(-1, 2): # ab hier broadcasting sinnvoll 
-        #    for dx in range(-1, 2): # dy und dx arrays mit elementen [-1, 0, 1] -> 9 kombinationen enstehen
-                # mit numpy alle kombinationen zwischen dy und dx
-                
-        # Coordinates of the neighboring cell with wrap-around for torus-world
         for i in range(9):
+            # Coordinates of the neighboring cell with wrap-around for torus-world
             neighbor_x = wrap_coordinate(cell_x + dy[i], cols) # wrap_coordinate muss nicht verändert werden
             neighbor_y = wrap_coordinate(cell_y + dx[i], rows) # neighbor_x/y sind jeweils arrays 
             neighbor_id = neighbor_x + neighbor_y * cols # das wird ein 1d array mit 9 elementen
@@ -142,8 +138,8 @@ def calculate_forces(sorted_pos, sorted_types,
 
             start_index_neighbor = cell_starts[neighbor_id]#[mask]
 
-                    # Calculate interactions between particles in cell_id (a) and neighbor_id (b)
-                    # Every particle in cell_id (a) ...
+            # Calculate interactions between particles in cell_id (a) and neighbor_id (b)
+            # Every particle in cell_id (a) ...
             for i_local in range(count_in_my_cell): # mit np.arange arbeiten und aus dem int count_in_my_cell ein array machen
                 idx_a = start_i + i_local #i_local mit diesem array ersetzen
                 pos_a = sorted_pos[idx_a] 
@@ -154,62 +150,79 @@ def calculate_forces(sorted_pos, sorted_types,
                 force_y_acc = np.float32(0.0)
                         
                         # ... interacts with every particle in neighbor_id (b)
-                for j_local in range(count_in_neighbor_cell): # count_in_neighborcell ist ein array mit den counts
-                    idx_b = start_index_neighbor + j_local # j_local ersetzen mit count in neighbro cell array
+                #for j_local in range(count_in_neighbor_cell): # count_in_neighborcell ist ein array mit den counts
+                    #idx_b = start_index_neighbor + j_local # j_local ersetzen mit count in neighbro cell array
                             
                             # Skip self-interaction
-                    if idx_a == idx_b: # idx a und b haben untersch. längen deswegen evtl. mit broadcasting array a gegen jedes element in b prüfen oder vice versa
-                        continue
-                                
-                    pos_b = sorted_pos[idx_b] 
-                    type_b = sorted_types[idx_b]
+                    #if idx_a == idx_b: # idx a und b haben untersch. längen deswegen evtl. mit broadcasting array a gegen jedes element in b prüfen oder vice versa
+                    #    continue
+                start_b = cell_starts[neighbor_id]
+                count_b = cell_counts[neighbor_id]
+                end_b = start_b + count_b  
+                             
+                pos_b = sorted_pos[start_b:end_b] 
+                types_b = sorted_types[start_b:end_b]
                             
-                    # Vector from a to b
-                    rel_x = pos_b[0] - pos_a[0] # anders slicen
-                    rel_y = pos_b[1] - pos_a[1] # '' ''
+                # Vectors from a to b
+                rels = pos_b - pos_a
+                rel_x = rels[:, 0]
+                rel_y = rels[:, 1]
+                
+                mask1 = (rel_x > half_w)
+                rel_x[mask1] -= w_width
+                mask2 = (rel_x < -half_w)
+                rel_x[mask2] += w_width
+                mask3 = (rel_y > half_h) 
+                rel_y[mask3] -= w_height
+                mask4 = (rel_y < -half_h)
+                rel_y[mask4] += w_height
+                # For torus-world: Shortest distance considering wrap-around
+                #if rel_x > half_w: # hier mit masken arbeiten weil conditin zwischen int und array nicht funktionieren
+                #    rel_x -= w_width # das soll auch nur auf bestimmte elemente in rel_x angewandt werden nicht auf alle
+                #elif rel_x < -half_w: 
+                #    rel_x += w_width
+                #if rel_y > half_h:                         
+                #    rel_y -= w_height
+                #elif rel_y < -half_h: 
+                #    rel_y += w_height
                             
-                            # For torus-world: Shortest distance considering wrap-around
-                    if rel_x > half_w: # hier mit masken arbeiten weil conditin zwischen int und array nicht funktionieren
-                        rel_x -= w_width # das soll auch nur auf bestimmte elemente in rel_x angewandt werden nicht auf alle
-                    elif rel_x < -half_w: 
-                        rel_x += w_width
-                    if rel_y > half_h: 
-                        rel_y -= w_height
-                    elif rel_y < -half_h: 
-                        rel_y += w_height
-                            
-                    dist_sq = rel_x*rel_x + rel_y*rel_y # kann glaube ich so bleiben, muss schauen
+                dist_sq = rel_x*rel_x + rel_y*rel_y # kann glaube ich so bleiben, muss schauen
                             
                             # Only consider neighbors within r_max
-                    if dist_sq > 0 and dist_sq < r_max_sq: # mit Maske ersetzen und mit array multiplizieren
-                        dist = np.sqrt(dist_sq)
-                        normalized_dist = dist * inv_r_max
+                mask_r = (dist_sq > 0) and (dist_sq < r_max_sq)
+                    #if dist_sq > 0 and dist_sq < r_max_sq: # mit Maske ersetzen und mit array multiplizieren
+                
+                dist = np.sqrt(dist_sq)
+                normalized_dist = dist * inv_r_max
                                 
-                                # Physiks Forula by Lennard-Jones potential inspired:
-                        force_factor = np.float32(0.0) # muss array sein
-
-                        if normalized_dist < repulsion_threshold:
-                                    # To close: Strong repulsion (to prevent overlap)
-                                    # Prevents particle to clump (idea from pauli principle)
-                            force_factor = (normalized_dist * inv_beta - 1.0) * repulsion_strength
-                                    
-                        else:
-                                    # FAR RANGE: Matrix Interaction
-                                    # We scale the range [repulsion_threshold ... 1.0] to [0 ... 1]
-                                    # to apply the matrix force
-                            matrix_val = interaction_matrix[type_a, type_b]
+                # Physics Formula inspired by Lennard-Jones potential:
+                force_factor = np.zeros(normalized_dist.shape[0], dtype=np.float32) # muss array sein
+                mask_rep = mask_r and (normalized_dist < repulsion_threshold)
+                mask_attr = mask_r and (normalized_dist > repulsion_threshold)
+                        #if normalized_dist < repulsion_threshold:
+                # Too close: Strong repulsion (to prevent overlap)
+                # Prevents particle to clump (idea from pauli principle)
+                force_factor[mask_rep] = (normalized_dist[mask_rep] * inv_beta - 1.0) * repulsion_strength
+                matrix_val = interaction_matrix[type_a, types_b]
+                pct = (normalized_dist - repulsion_threshold) * inv_one_minus_beta
+                shape = (1.0 - np.abs(2.0 * pct - 1.0))
+                force_factor[mask_attr] = matrix_val[mask_attr] * shape[mask_attr]
+                        #else:
+                        # FAR RANGE: Matrix Interaction
+                        # We scale the range [repulsion_threshold ... 1.0] to [0 ... 1]
+                        # to apply the matrix force
+                            
                                     
                                     # Scale the matrix interaction by how close we are to the repulsion threshold
-                            pct = (normalized_dist - repulsion_threshold) * inv_one_minus_beta
+                            
                                     
                                     # "Bump" in the curve for close interactions, 
                                     # so that the matrix has more influence when particles are closer (but not too close)
-                            shape = (1.0 - abs(2.0 * pct - 1.0))
-                            force_factor = matrix_val * shape
+                            
 
                                 # Addition of the force contribution from particle b to particle a
-                        force_x_acc += (rel_x / dist) * force_factor
-                        force_y_acc += (rel_y / dist) * force_factor
+                force_x_acc += np.sum((rel_x / dist) * force_factor)
+                force_y_acc += np.sum((rel_y / dist) * force_factor)
 
                         # Sum up all Forces of A
                 total_forces[idx_a, 0] += force_x_acc # hier nochmal schauen wegen Dimensionen
