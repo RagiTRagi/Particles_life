@@ -159,7 +159,7 @@ def calculate_forces(sorted_pos, sorted_types,
                 start_b = cell_starts[neighbor_id]
                 count_b = cell_counts[neighbor_id]
                 end_b = start_b + count_b  
-                             
+                
                 pos_b = sorted_pos[start_b:end_b] 
                 types_b = sorted_types[start_b:end_b]
                             
@@ -186,31 +186,69 @@ def calculate_forces(sorted_pos, sorted_types,
                 #elif rel_y < -half_h: 
                 #    rel_y += w_height
                             
-                dist_sq = rel_x*rel_x + rel_y*rel_y # kann glaube ich so bleiben, muss schauen
+                dists_sq = rel_x*rel_x + rel_y*rel_y # kann glaube ich so bleiben, muss schauen
                             
                             # Only consider neighbors within r_max
-                mask_r = (dist_sq > 0) and (dist_sq < r_max_sq)
+                mask_r = (dists_sq > 0) & (dists_sq < r_max_sq)
                     #if dist_sq > 0 and dist_sq < r_max_sq: # mit Maske ersetzen und mit array multiplizieren
                 
-                dist = np.sqrt(dist_sq)
-                normalized_dist = dist * inv_r_max
-                                
+                dist = np.sqrt(dists_sq)
+                normalized_dists = dist * inv_r_max
+                
+                force_factor = np.float32(0.0)
                 # Physics Formula inspired by Lennard-Jones potential:
-                force_factor = np.zeros(normalized_dist.shape[0], dtype=np.float32) # muss array sein
-                mask_rep = mask_r and (normalized_dist < repulsion_threshold)
-                mask_attr = mask_r and (normalized_dist > repulsion_threshold)
-                        #if normalized_dist < repulsion_threshold:
+                for j in range(normalized_dists.shape[0]):
+                    
+                    dist_sq = dists_sq[j]
+                    
+                    if dist_sq <= 0 or dist_sq >= r_max_sq:
+                        continue
+                    
+                    normalized_dist = normalized_dists[j]
+                    
+                    if normalized_dist < repulsion_threshold:
+                                # To close: Strong repulsion (to prevent overlap)
+                                # Prevents particle to clump (idea from pauli principle)
+                        force_factor = (normalized_dist * inv_beta - 1.0) * repulsion_strength
+                    else:
+                        type_b = types_b[j]
+                        matrix_val = interaction_matrix[type_a, type_b]
+                                
+                                # Scale the matrix interaction by how close we are to the repulsion threshold
+                        pct = (normalized_dist - repulsion_threshold) * inv_one_minus_beta
+                                
+                                # "Bump" in the curve for close interactions, 
+                                # so that the matrix has more influence when particles are closer (but not too close)
+                        shape = (1.0 - abs(2.0 * pct - 1.0))
+                        force_factor = matrix_val * shape
+                        
+                    force_x_acc += (rel_x[j] / dist[j]) * force_factor
+                    force_y_acc += (rel_y[j] / dist[j]) * force_factor
+                         
+                    
+                 # muss array sein
+                #mask_rep = mask_r & (normalized_dist < repulsion_threshold)
+                #mask_attr = mask_r & (normalized_dist > repulsion_threshold)
+                    #if normalized_dist < repulsion_threshold:
                 # Too close: Strong repulsion (to prevent overlap)
                 # Prevents particle to clump (idea from pauli principle)
-                force_factor[mask_rep] = (normalized_dist[mask_rep] * inv_beta - 1.0) * repulsion_strength
-                matrix_val = interaction_matrix[type_a, types_b]
-                pct = (normalized_dist - repulsion_threshold) * inv_one_minus_beta
-                shape = (1.0 - np.abs(2.0 * pct - 1.0))
-                force_factor[mask_attr] = matrix_val[mask_attr] * shape[mask_attr]
+                #force_factor[mask_rep] = (normalized_dist[mask_rep] * inv_beta - 1.0) * repulsion_strength
+                #matrix_val = interaction_matrix[type_a, types_b]
+                #pct = (normalized_dist - repulsion_threshold) * inv_one_minus_beta
+                #shape = (1.0 - np.abs(2.0 * pct - 1.0))
+                #force_factor[mask_attr] = matrix_val[mask_attr] * shape[mask_attr]
                         #else:
                         # FAR RANGE: Matrix Interaction
                         # We scale the range [repulsion_threshold ... 1.0] to [0 ... 1]
                         # to apply the matrix force
+                    
+                        #else:
+                                # FAR RANGE: Matrix Interaction
+                                # We scale the range [repulsion_threshold ... 1.0] to [0 ... 1]
+                                # to apply the matrix force
+                            
+
+                            # Addition of the force contribution from particle b to particle a
                             
                                     
                                     # Scale the matrix interaction by how close we are to the repulsion threshold
@@ -221,8 +259,8 @@ def calculate_forces(sorted_pos, sorted_types,
                             
 
                                 # Addition of the force contribution from particle b to particle a
-                force_x_acc += np.sum((rel_x / dist) * force_factor)
-                force_y_acc += np.sum((rel_y / dist) * force_factor)
+                #force_x_acc += np.sum((rel_x / dist) * force_factor)
+                #force_y_acc += np.sum((rel_y / dist) * force_factor)
 
                         # Sum up all Forces of A
                 total_forces[idx_a, 0] += force_x_acc # hier nochmal schauen wegen Dimensionen
