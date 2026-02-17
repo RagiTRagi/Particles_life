@@ -28,7 +28,7 @@ class ParticleCanvas(scene.SceneCanvas):
         self.view.camera.interactive = False
         self.view.camera.rect = (0, 0, world_width, world_height)
 
-        self.history = deque(maxlen=10)
+        self.history = deque(maxlen=6)
         self.blur = scene.Markers(parent=self.view.scene)
         self.blur.visible = False
 

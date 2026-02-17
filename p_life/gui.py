@@ -22,9 +22,9 @@ main_layout.addWidget(controls, stretch=0)
 
 game = Game(
     n=10000,
-    world_width=50.0,
-    world_height=50.0,
-    r_max=10.0,
+    world_width=100.0,
+    world_height=100.0,
+    r_max=5.0,
 )
 canvas = ParticleCanvas(game, world_width=game.w, world_height=game.h)
 main_layout.addWidget(canvas.native, stretch=1)
@@ -161,5 +161,5 @@ timer = QtCore.QTimer()
 timer.timeout.connect(canvas.step_and_draw) 
 timer.start(int(1000 / 60))
 
-window.show()
+window.showMaximized()
 app.exec()
