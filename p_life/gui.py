@@ -1,8 +1,12 @@
 from PySide6 import QtWidgets, QtCore
 from PySide6.QtCore import Qt
 
-from game import Game
-from frontend_vispy import ParticleCanvas
+try:
+    from .game import Game
+    from .frontend_vispy import ParticleCanvas
+except ImportError:
+    from game import Game
+    from frontend_vispy import ParticleCanvas
 
 
 app = QtWidgets.QApplication([])
@@ -17,10 +21,10 @@ layout = QtWidgets.QGridLayout(controls)
 main_layout.addWidget(controls, stretch=0)
 
 game = Game(
-    n=500,
-    world_width=100.0,
-    world_height=100.0,
-    r_max=5.0,
+    n=10000,
+    world_width=50.0,
+    world_height=50.0,
+    r_max=10.0,
 )
 canvas = ParticleCanvas(game, world_width=game.w, world_height=game.h)
 main_layout.addWidget(canvas.native, stretch=1)
@@ -154,7 +158,7 @@ def toggle():
         pause_btn.setText("Resume")
         running["on"] = False
     else:
-        timer.start(int(1000 / 120))
+        timer.start(int(1000 / 60))
         pause_btn.setText("Pause")
         running["on"] = True
 
@@ -165,7 +169,7 @@ particle_button_clicked(0, 0)
 
 timer = QtCore.QTimer()
 timer.timeout.connect(canvas.step_and_draw) 
-timer.start(int(1000 / 120))
+timer.start(int(1000 / 60))
 
 window.show()
 app.exec()
