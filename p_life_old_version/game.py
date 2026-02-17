@@ -43,13 +43,13 @@ def quadrantisieren(pos, velocities, types, world_width, world_height, r_max):
 
     return sorted_pos, sorted_vel, sorted_types, cell_starts, cell_counts, cols, rows
 
-def update_particles(pos, vel, types, world_width, world_height, r_max, dt, friction, noise_strength, matrix):
+def update_particles_old(pos, vel, types, world_width, world_height, r_max, dt, friction, noise_strength, matrix):
     
     # Grid berechnen
     sorted_pos, sorted_vel, sorted_types, cell_starts, cell_counts, cols, rows = quadrantisieren(pos, vel, types, world_width, world_height, r_max)
 
     # Kräfte berechnen
-    forces = calculate_forces(sorted_pos, sorted_types, cell_starts, cell_counts, cols, rows, matrix, r_max, world_width, world_height)
+    forces = calculate_forces_old(sorted_pos, sorted_types, cell_starts, cell_counts, cols, rows, matrix, r_max, world_width, world_height)
 
     noise = np.random.normal(0.0, noise_strength, size=sorted_vel.shape)
 
@@ -63,6 +63,8 @@ def update_particles(pos, vel, types, world_width, world_height, r_max, dt, fric
 
     # Ausgabe von Position, Geschwindigkeit und Typ
     return sorted_pos, sorted_vel, sorted_types
+
+
 @njit
 def wrap_coordinate(value, max_value):
     """
@@ -72,7 +74,7 @@ def wrap_coordinate(value, max_value):
     return value % max_value
 
 @njit(parallel=True, fastmath=True)
-def calculate_forces(sorted_pos, sorted_types, 
+def calculate_forces_old(sorted_pos, sorted_types, 
     cell_starts, cell_counts, 
     cols, rows, 
     interaction_matrix, r_max, 
@@ -92,8 +94,8 @@ def calculate_forces(sorted_pos, sorted_types,
     inv_beta = np.float32(1.0 / beta)
     inv_one_minus_beta = np.float32(1.0 / (1.0 - beta))
     
-    repulsion_strength = np.float32(2.0)#                          
-    # Tresholf for near interaction
+    repulsion_strength = np.float32(2.0)                           
+    # Threshold for near interaction
     repulsion_threshold = np.float32(0.3)
 
     w_width = np.float32(world_width)
@@ -101,6 +103,10 @@ def calculate_forces(sorted_pos, sorted_types,
     half_w = w_width * 0.5
     half_h = w_height * 0.5
     r_max_sq = r_max * r_max
+    
+    # offsets directly ready as tuples
+    dy = (-1, -1, -1, 0, 0, 0, 1, 1, 1)
+    dx = (-1, 0, 1, -1, 0, 1, -1, 0, 1)
 
     # Parallel computing
     # prange for parallel calculation of forces in each cell
@@ -118,95 +124,94 @@ def calculate_forces(sorted_pos, sorted_types,
         cell_y = cell_id // cols
 
         # Loop through neighboring cells
-        for dy in range(-1, 2):
-            for dx in range(-1, 2): 
+        for i in range(9):
+            
+            # Coordinates of the neighboring cell with wrap-around for torus-world
+            neighbor_x = wrap_coordinate(cell_x + dy[i], cols)
+            neighbor_y = wrap_coordinate(cell_y + dx[i], rows) 
+            neighbor_id = neighbor_x + neighbor_y * cols
+
+            # Check if the neighboring cell has particles
+            count_in_neighbor_cell = cell_counts[neighbor_id]
+            if count_in_neighbor_cell == 0:
+                continue
+            
+            # Calculate necessary boundaries for each neighbor cell
+            start_b = cell_starts[neighbor_id]
+            count_b = cell_counts[neighbor_id]
+            end_b = start_b + count_b
+            
+            # Slicing of particle positions/types that are within the neighbor cell
+            pos_b = sorted_pos[start_b:end_b] 
+            types_b = sorted_types[start_b:end_b]
+            
+            # Calculate interactions between particles in cell_id (a) and neighbor_id (b)
+            # Every particle in cell_id (a) ...
+            for i_local in range(count_in_my_cell):
+                idx_a = start_i + i_local 
+                pos_a = sorted_pos[idx_a] 
+                type_a = sorted_types[idx_a]
+                        
+                # Local force accumulator for particle a
+                force_x_acc = np.float32(0.0)
+                force_y_acc = np.float32(0.0)
+                                  
+                # Vectors from a to b
+                rels = pos_b - pos_a
+                rel_x = rels[:, 0]
+                rel_y = rels[:, 1]
                 
-                # Coordinates of the neighboring cell with wrap-around for torus-world
-                neighbor_x = wrap_coordinate(cell_x + dx, cols)
-                neighbor_y = wrap_coordinate(cell_y + dy, rows)
-                neighbor_id = neighbor_x + neighbor_y * cols
-
-                # Check if the neighboring cell has particles
-                count_in_neighbor_cell = cell_counts[neighbor_id]
-                if count_in_neighbor_cell == 0:
-                    continue
-
-                start_index_neighbor = cell_starts[neighbor_id]
-
-                # Calculate interactions between particles in cell_id (a) and neighbor_id (b)
-                # Every particle in cell_id (a) ...
-                for i_local in range(count_in_my_cell):
-                    idx_a = start_i + i_local
-                    pos_a = sorted_pos[idx_a]
-                    type_a = sorted_types[idx_a]
-                    
-                    # Local force accumulator for particle a
-                    force_x_acc = np.float32(0.0)
-                    force_y_acc = np.float32(0.0)
-                    
-                    # ... interacts with every particle in neighbor_id (b)
-                    for j_local in range(count_in_neighbor_cell):
-                        idx_b = start_index_neighbor + j_local
-                        
-                        # Skip self-interaction
-                        if idx_a == idx_b:
-                            continue
+                # For torus-world: Shortest distance considering wrap-around
+                rel_x = rel_x - w_width*(rel_x > half_w) + w_width*(rel_x < -half_w)
+                rel_y = rel_y - w_height*(rel_y > half_h) + w_height*(rel_y < -half_h)
                             
-                        pos_b = sorted_pos[idx_b]
-                        type_b = sorted_types[idx_b]
-                        
-                        # Vector from a to b
-                        rel_x = pos_b[0] - pos_a[0]
-                        rel_y = pos_b[1] - pos_a[1]
-                        
-                        # For torus-world: Shortest distance considering wrap-around
-                        if rel_x > half_w: 
-                            rel_x -= w_width
-                        elif rel_x < -half_w: 
-                            rel_x += w_width
-                        if rel_y > half_h: 
-                            rel_y -= w_height
-                        elif rel_y < -half_h: 
-                            rel_y += w_height
-                        
-                        dist_sq = rel_x*rel_x + rel_y*rel_y
-                        
-                        # Only consider neighbors within r_max
-                        if dist_sq > 0 and dist_sq < r_max_sq:
-                            dist = np.sqrt(dist_sq)
-                            normalized_dist = dist * inv_r_max
-                            
-                            # Physiks Forula by Lennard-Jones potential inspired:
-                            force_factor = np.float32(0.0)
-
-                            if normalized_dist < repulsion_threshold:
-                                # To close: Strong repulsion (to prevent overlap)
-                                # Prevents particle to clump (idea from pauli principle)
-                                force_factor = (normalized_dist * inv_beta - 1.0) * repulsion_strength
+                dists_sq = rel_x*rel_x + rel_y*rel_y
+                
+                # Iteration over particles in neighbor cell
+                for j in range(dists_sq.shape[0]):
+                    
+                    dist_sq = dists_sq[j]
+                    
+                    # Only consider neighbors within r_max for further calculation
+                    if dist_sq <= 0 or dist_sq >= r_max_sq:
+                        continue
+                    
+                    dist = np.sqrt(dist_sq)
+                    normalized_dist = dist * inv_r_max
+                    
+                    # Physics Formula inspired by Lennard-Jones potential:
+                    force_factor = np.float32(0.0)
+                    
+                    if normalized_dist < repulsion_threshold:
+                        # Too close: Strong repulsion (to prevent overlap)
+                        # Prevents particles from clumping (idea from pauli principle)
+                        force_factor = (normalized_dist * inv_beta - 1.0) * repulsion_strength
+                    else:
+                        # FAR RANGE: Matrix Interaction
+                        # We scale the range [repulsion_threshold ... 1.0] to [0 ... 1]
+                        # to apply the matrix force
+                        type_b = types_b[j]
+                        matrix_val = interaction_matrix[type_a, type_b]
                                 
-                            else:
-                                # FAR RANGE: Matrix Interaction
-                                # We scale the range [repulsion_threshold ... 1.0] to [0 ... 1]
-                                # to apply the matrix force
-                                matrix_val = interaction_matrix[type_a, type_b]
+                        # Scale the matrix interaction by how close we are to the repulsion threshold
+                        pct = (normalized_dist - repulsion_threshold) * inv_one_minus_beta
                                 
-                                # Scale the matrix interaction by how close we are to the repulsion threshold
-                                pct = (normalized_dist - repulsion_threshold) * inv_one_minus_beta
-                                
-                                # "Bump" in the curve for close interactions, 
-                                # so that the matrix has more influence when particles are closer (but not too close)
-                                shape = (1.0 - abs(2.0 * pct - 1.0))
-                                force_factor = matrix_val * shape
+                        # "Bump" in the curve for close interactions, 
+                        # so that the matrix has more influence when particles are closer (but not too close)
+                        shape = (1.0 - abs(2.0 * pct - 1.0))
+                        force_factor = matrix_val * shape
+                    
+                    # Addition of the force contribution from particle b to particle a
+                    force_x_acc += (rel_x[j] / dist) * force_factor
+                    force_y_acc += (rel_y[j] / dist) * force_factor
+                    
 
-                            # Addition of the force contribution from particle b to particle a
-                            force_x_acc += (rel_x / dist) * force_factor
-                            force_y_acc += (rel_y / dist) * force_factor
-
-                    # Sum up all Forces of A
-                    total_forces[idx_a, 0] += force_x_acc
-                    total_forces[idx_a, 1] += force_y_acc
+                # Sum up all Forces of A
+                total_forces[idx_a, 0] += force_x_acc
+                total_forces[idx_a, 1] += force_y_acc
 
     return total_forces
+
 class Game:
     def __init__(self, n=2000, world_width=100.0, world_height=100.0, r_max=5.0):
         self.w = world_width
@@ -225,7 +230,7 @@ class Game:
         ], dtype=np.float32)
 
     def step(self, dt=0.01): # dt kleiner für Stabilität
-        self.pos, self.vel, self.types = update_particles(
+        self.pos, self.vel, self.types = update_particles_old(
             self.pos, self.vel, self.types, self.w, self.h, self.r_max, dt, 
             self.friction, self.noise_strength, self.matrix
         )

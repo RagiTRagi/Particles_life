@@ -1,4 +1,5 @@
-from p_life.game import Game, update_particles1, update_particles2
+from p_life.game import Game, update_particles
+from p_life_old_version.game import update_particles_old
 import time
 
 game = Game(
@@ -16,23 +17,23 @@ pos2, vel2, types2 = pos.copy(), vel.copy(), types.copy()
 
 n = 250
 
-# Benchmark 1
+# Benchmark numba version
 start = time.perf_counter()
 for _ in range(n):
-    pos1, vel1, types1 = update_particles1(pos1, vel1, types1, game.w, game.h, game.r_max, 0.01, game.friction, game.noise_strength, game.matrix)
-print(pos1.shape)
+    pos1, vel1, types1 = update_particles(pos1, vel1, types1, game.w, game.h, game.r_max, 0.01, game.friction, game.noise_strength, game.matrix)
+
 end = time.perf_counter()
 
-print("Numba + broadcasting:", end - start)
+print("Numba version:", end - start)
 
-# Benchmark 2
+# Benchmark hybrid version
 start = time.perf_counter()
 for _ in range(n):
-    pos2, vel2, types2 = update_particles2(pos2, vel2, types2, game.w, game.h, game.r_max, 0.01, game.friction, game.noise_strength, game.matrix)
-print(pos2.shape)
+    pos2, vel2, types2 = update_particles_old(pos2, vel2, types2, game.w, game.h, game.r_max, 0.01, game.friction, game.noise_strength, game.matrix)
+
 end = time.perf_counter()
 
-print("Numba solely:", end - start)
+print("Hybrid version:", end - start)
 
 
 
