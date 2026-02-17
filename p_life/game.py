@@ -63,7 +63,6 @@ def update_particles(pos, vel, types, world_width, world_height, r_max, dt, fric
 
     # Ausgabe von Position, Geschwindigkeit und Typ
     return sorted_pos, sorted_vel, sorted_types
-
 @njit
 def wrap_coordinate(value, max_value):
     """
@@ -208,7 +207,6 @@ def calculate_forces(sorted_pos, sorted_types,
                     total_forces[idx_a, 1] += force_y_acc
 
     return total_forces
-
 class Game:
     def __init__(self, n=2000, world_width=100.0, world_height=100.0, r_max=5.0):
         self.w = world_width
