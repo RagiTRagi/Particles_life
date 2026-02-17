@@ -11,7 +11,7 @@ except ImportError:
 
 app = QtWidgets.QApplication([])
 window = QtWidgets.QWidget()
-window.resize(1200, 700)
+window.resize(100, 100)
 window.setWindowTitle("particles life")
 
 main_layout = QtWidgets.QHBoxLayout(window)
@@ -22,9 +22,9 @@ main_layout.addWidget(controls, stretch=0)
 
 game = Game(
     n=10000,
-    world_width=50.0,
-    world_height=50.0,
-    r_max=10.0,
+    world_width=100.0,
+    world_height=100.0,
+    r_max=5.0,
 )
 canvas = ParticleCanvas(game, world_width=game.w, world_height=game.h)
 main_layout.addWidget(canvas.native, stretch=1)
@@ -107,8 +107,6 @@ def particle_force_change(value):
 
         if hasattr(game, "set_force"):
             game.set_force(row, col, force)
-        elif hasattr(game, "force_matrix"):
-            game.force_matrix[row][col] = force
         
 slider = QtWidgets.QSlider()
 slider.setOrientation(Qt.Orientation.Horizontal)
@@ -139,14 +137,6 @@ noise_box.valueChanged.connect(lambda v: setattr(game, "noise_strength", float(v
 layout.addWidget(QtWidgets.QLabel("noise"),  num_rows+2, 0)
 layout.addWidget(noise_box, num_rows+2, 1, 1, num_cols-1)
 
-rmax_box = QtWidgets.QDoubleSpinBox()
-rmax_box.setRange(0.5, 20.0)
-rmax_box.setSingleStep(0.1)
-rmax_box.setDecimals(2)
-rmax_box.setValue(float(game.r_max))
-rmax_box.valueChanged.connect(lambda v: setattr(game, "r_max", float(v)))
-layout.addWidget(QtWidgets.QLabel("r_max"),  num_rows+3, 0)
-layout.addWidget(rmax_box, num_rows+3, 1, 1, num_cols-1)
 
 pause_btn = QtWidgets.QPushButton("Pause")
 layout.addWidget(pause_btn, num_rows+4, 0, 1, num_cols)
@@ -171,5 +161,5 @@ timer = QtCore.QTimer()
 timer.timeout.connect(canvas.step_and_draw) 
 timer.start(int(1000 / 60))
 
-window.show()
+window.showMaximized()
 app.exec()
