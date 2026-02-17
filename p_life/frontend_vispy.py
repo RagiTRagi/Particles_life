@@ -77,6 +77,6 @@ class ParticleCanvas(scene.SceneCanvas):
         self.markers.set_data(pos=pos, face_color=colors, size=7.0, symbol="disc", edge_width=0.0)
 
     def step_and_draw(self):
-            snap = self.game.step(self.dt)
-            self.draw_snapshot(snap)
-            self.update()
+        snap = self.game.step(self.dt)
+        self.draw_snapshot(snap)
+        self.update()
