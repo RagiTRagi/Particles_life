@@ -1,43 +1,43 @@
 import numpy as np
 from numba import njit, prange
 
-def quadrantisieren(pos, velocities, types, world_width, world_height, r_max):
+def regroup_particles_in_cells(pos, velocities, types, world_width, world_height, r_max):
 
-    cols = int(world_width / r_max)  # Anzahl der Spalten berechnen
-    rows = int(world_height / r_max) # Anzahl der Reihen berechnen
+    cols = int(world_width / r_max)  # number of cols
+    rows = int(world_height / r_max) # number of rows
 
-    cols = max(1, cols) # Fallback damit es mindestens eine Spalte gibt
-    rows = max(1, rows) # Fallback damit es mindestens eine Reihe gibt
+    cols = max(1, cols) # Fallback so that at least one col exists
+    rows = max(1, rows) # Fallback so that at least one row exists
 
-    grid_x = (pos[:, 0] / r_max).astype(int) # Umgerechnete X Positon
-    grid_y = (pos[:, 1] / r_max).astype(int) # Umgerechnete Y Position
+    grid_x = (pos[:, 0] / r_max).astype(int) # converted X position
+    grid_y = (pos[:, 1] / r_max).astype(int) # converted Y position
 
-    # Sicherheitshalber Indices auf [0, max] begrenzen
+    # Limit indices to [0, max] for safety
     grid_x = np.clip(grid_x, 0, cols - 1)
     grid_y = np.clip(grid_y, 0, rows - 1)
 
-    cell_ids = grid_x + (grid_y * cols) # 2D Zellen ID in 1D Zellen ID 
+    cell_ids = grid_x + (grid_y * cols) # 2D cell ID in 1D cell ID 
 
-    sort_indices = np.argsort(cell_ids) # Sortieren Reihenfolge der 1D Werte berrechnen
+    sort_indices = np.argsort(cell_ids) # indices that sort 
 
-    # Sortieren nach der bestimmten Reihenfolge
+    # Sort arrays with indices that put values in order
     sorted_pos = pos[sort_indices] 
     sorted_vel = velocities[sort_indices]
     sorted_types = types[sort_indices]
     sorted_cell_ids = cell_ids[sort_indices]
 
-    total_cells = cols * rows # Max Zellen berechnen
+    total_cells = cols * rows # calculate max cells
 
-    # Leere Arrays für Inhaltsverzeichnis
+    # Empty arrays as table of contents
     cell_starts = np.zeros(total_cells, dtype=int)
     cell_counts = np.zeros(total_cells, dtype=int)
 
-    # Ermitteln in welchen Zellen welche sind und speichern von wo bis wo die ID geht 
+    # Determine which cells are which and store where the ID is 
     unique_ids, unique_starts, unique_counts = np.unique(
         sorted_cell_ids, return_index=True, return_counts=True
     )
 
-    # Leere Arrays mit den gefundenen Werten füllen
+    # Fill empty arrays with detected values
     cell_starts[unique_ids] = unique_starts
     cell_counts[unique_ids] = unique_counts
 
@@ -45,23 +45,23 @@ def quadrantisieren(pos, velocities, types, world_width, world_height, r_max):
 
 def update_particles(pos, vel, types, world_width, world_height, r_max, dt, friction, noise_strength, matrix):
     
-    # Grid berechnen
-    sorted_pos, sorted_vel, sorted_types, cell_starts, cell_counts, cols, rows = quadrantisieren(pos, vel, types, world_width, world_height, r_max)
+    # Calculate grids
+    sorted_pos, sorted_vel, sorted_types, cell_starts, cell_counts, cols, rows = regroup_particles_in_cells(pos, vel, types, world_width, world_height, r_max)
 
-    # Kräfte berechnen
+    # Calculate forces
     forces = calculate_forces(sorted_pos, sorted_types, cell_starts, cell_counts, cols, rows, matrix, r_max, world_width, world_height)
 
     noise = np.random.normal(0.0, noise_strength, size=sorted_vel.shape)
 
-    # Neue Velocity berechnen
+    # Calculate new velocity
     sorted_vel += forces * dt
     sorted_vel += noise
     sorted_vel *= friction
 
-    # Position updaten
+    # Update position
     sorted_pos += sorted_vel * dt
 
-    # Ausgabe von Position, Geschwindigkeit und Typ
+    # Output containing: position, velocity and types
     return sorted_pos, sorted_vel, sorted_types
 @njit
 def wrap_coordinate(value, max_value):
@@ -92,7 +92,7 @@ def calculate_forces(sorted_pos, sorted_types,
     inv_beta = np.float32(1.0 / beta)
     inv_one_minus_beta = np.float32(1.0 / (1.0 - beta))
     
-    repulsion_strength = np.float32(2.0)#                          
+    repulsion_strength = np.float32(2.0)                           
     # Tresholf for near interaction
     repulsion_threshold = np.float32(0.3)
 
@@ -176,12 +176,12 @@ def calculate_forces(sorted_pos, sorted_types,
                             dist = np.sqrt(dist_sq)
                             normalized_dist = dist * inv_r_max
                             
-                            # Physiks Forula by Lennard-Jones potential inspired:
+                            # Physics Formula by Lennard-Jones potential inspired:
                             force_factor = np.float32(0.0)
 
                             if normalized_dist < repulsion_threshold:
-                                # To close: Strong repulsion (to prevent overlap)
-                                # Prevents particle to clump (idea from pauli principle)
+                                # Too close: Strong repulsion (to prevent overlap)
+                                # Prevents particles from clumping (idea from pauli principle)
                                 force_factor = (normalized_dist * inv_beta - 1.0) * repulsion_strength
                                 
                             else:
@@ -213,24 +213,24 @@ class Game:
         self.h = world_height
         self.r_max = r_max
         self.pos, self.vel, self.types = self.init_particles(n, self.w, self.h)
-        self.friction = 0.95 # Etwas weniger Reibung für mehr Bewegung
-        self.noise_strength = 0.1 # Kleineres Rauschen
+        self.friction = 0.95 # less friction = more movement
+        self.noise_strength = 0.1 # smaller noise
 
-        # Angepasste Matrix (Normale Werte)
+        #  Adjusted matrix (normal values)
         self.matrix = np.array([
-            [ 0, 0,  0, 0],  # blau
-            [ 0, 0,  0, 0],  # gelb
-            [ 0, 0,  0, 0],  # grün
-            [ 0, 0,  0, 0],  # rot
+            [ 0, 0,  0, 0],  # blue
+            [ 0, 0,  0, 0],  # yellow
+            [ 0, 0,  0, 0],  # green
+            [ 0, 0,  0, 0],  # red
         ], dtype=np.float32)
 
-    def step(self, dt=0.01): # dt kleiner für Stabilität
+    def step(self, dt=0.01): # dt smaller for stability
         self.pos, self.vel, self.types = update_particles(
             self.pos, self.vel, self.types, self.w, self.h, self.r_max, dt, 
             self.friction, self.noise_strength, self.matrix
         )
         
-        # Wrap Around (Torus-Welt)
+        # Wrap Around (Torus-World)
         self.pos[:, 0] = np.mod(self.pos[:, 0], self.w)
         self.pos[:, 1] = np.mod(self.pos[:, 1], self.h)
         
