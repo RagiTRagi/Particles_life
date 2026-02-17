@@ -9,14 +9,10 @@ colour_type = np.array([
 ], dtype=np.float32)
 
 def types_to_colors(types):
-    types = list(types)  
-    colors = []
-
-    for t in types:
-        i = t % len(colour_type) 
-        colors.append(colour_type [i])
-
-    return np.array(colors, dtype=np.float32)
+    """Effiziente NumPy-basierte Konvertierung statt Loop"""
+    types = np.asarray(types, dtype=np.int32)
+    types = types % len(colour_type)  # Modulo operation
+    return colour_type[types]  # Direct indexing - viel schneller!
 
 class ParticleCanvas(scene.SceneCanvas):
     def __init__(self, game, world_width, world_height):
@@ -38,12 +34,7 @@ class ParticleCanvas(scene.SceneCanvas):
 
     def draw_snapshot(self, snap):
         pos = np.asarray(snap["pos"], dtype=np.float32)
-        raw_types = np.asarray(snap["types"])
-
-        if raw_types.dtype.kind in "iu":
-            types = raw_types.astype(np.int32)
-        else:
-            raise TypeError("types must be integer IDs")
+        types = np.asarray(snap["types"], dtype=np.int32)
 
         colors = types_to_colors(types)
         self.markers.set_data(pos=pos, face_color=colors, size=3.0)

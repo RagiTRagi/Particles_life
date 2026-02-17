@@ -63,7 +63,6 @@ def update_particles(pos, vel, types, world_width, world_height, r_max, dt, fric
 
     # Ausgabe von Position, Geschwindigkeit und Typ
     return sorted_pos, sorted_vel, sorted_types
-
 @njit
 def wrap_coordinate(value, max_value):
     """
@@ -72,7 +71,7 @@ def wrap_coordinate(value, max_value):
     """
     return value % max_value
 
-@njit(parallel=True, fastmath=True)
+@njit(parallel=True, fastmath=True, cache=True)
 def calculate_forces(sorted_pos, sorted_types, 
     cell_starts, cell_counts, 
     cols, rows, 
@@ -208,9 +207,8 @@ def calculate_forces(sorted_pos, sorted_types,
                     total_forces[idx_a, 1] += force_y_acc
 
     return total_forces
-
 class Game:
-    def __init__(self, n=2000, world_width=100.0, world_height=100.0, r_max=5.0):
+    def __init__(self, n=2000, world_width=50.0, world_height=50.0, r_max=10.0):
         self.w = world_width
         self.h = world_height
         self.r_max = r_max
@@ -220,10 +218,10 @@ class Game:
 
         # Angepasste Matrix (Normale Werte)
         self.matrix = np.array([
-            [ 2, -0.8,  0.6, -0.2],  # blau
-            [ 0.6,  2, -0.8, -0.2],  # gelb
-            [-0.8,  0.6,  2, -0.2],  # grün
-            [-0.2, -0.2, -0.2,  2],  # rot
+            [ 0, 0,  0, 0],  # blau
+            [ 0, 0,  0, 0],  # gelb
+            [ 0, 0,  0, 0],  # grün
+            [ 0, 0,  0, 0],  # rot
         ], dtype=np.float32)
 
     def step(self, dt=0.01): # dt kleiner für Stabilität
