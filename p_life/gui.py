@@ -30,13 +30,13 @@ canvas = ParticleCanvas(game, world_width=game.w, world_height=game.h)
 main_layout.addWidget(canvas.native, stretch=1)
 
 
-particle_list = ["blue", "yellow", "green", "red"]
+particle_list = ["🔵", "🟡", "🟢", "🔴"]
 
 particle_force_matrix = []
 for i in particle_list:
     row = []
     for j in particle_list:
-        row.append(f"{i[0].upper()} x {j[0].upper()}")
+        row.append(f"{i[0].upper()} -> {j[0].upper()}")
     particle_force_matrix.append(row)
 
 for row in range(len(particle_force_matrix)):
@@ -52,23 +52,22 @@ def value_to_color(value):
 
     if value < 0:
 
-        t = (value + 100) / 100
-        r = 0
+        t = (value + 50) / 50
+        r = int(100 + t * 155)
         g = int(100 + t * 155)
-        b = 0
+        b = int(100 + t * 155)
     
     elif value == 0:
-        r = 50
-        g = 50
+        r = 255
+        g = 255
         b = 255
     
     else:
-        
-        t = value / 100
-        
-        r = int(255 - t * 155)
-        g = 0
-        b = 0
+
+        t = value / 50
+        r = 255
+        g = int(255 - t * 255)
+        b = 255
 
     return f"rgb({r},{g},{b})"
 
@@ -112,7 +111,7 @@ slider = QtWidgets.QSlider()
 slider.setOrientation(Qt.Orientation.Horizontal)
 slider.setFixedHeight(24)
 slider.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-slider.setRange(-100, 100)
+slider.setRange(-50, 50)
 slider.valueChanged.connect(particle_force_change)
 
 num_rows = len(particle_force_matrix)
@@ -154,8 +153,16 @@ def toggle():
 
 pause_btn.clicked.connect(toggle)
 
-particle_button_clicked(0, 0)
+restart_btn = QtWidgets.QPushButton("Reset")
 
+def restart():
+    if hasattr(game, "reset_particles"):
+        game.reset_particles()
+
+restart_btn.clicked.connect(restart)
+layout.addWidget(restart_btn, num_rows+3, 0, 1, num_cols)
+
+particle_button_clicked(0, 0)
 
 timer = QtCore.QTimer()
 timer.timeout.connect(canvas.step_and_draw) 

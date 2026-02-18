@@ -245,3 +245,7 @@ class Game:
 
     def set_force(self, row: int, col: int, force: float) -> None:
         self.matrix[row, col] = np.float32(force)
+
+    def reset_particles(self):
+        n = self.pos.shape[0]
+        self.pos, self.vel, self.types = self.init_particles(n, self.w, self.h)
