@@ -17,7 +17,7 @@ A Python software application that simulates a **dynamic particle system** in wh
 
 ## Controls 
 
-- Click a matrix button to select a parrticle Interaction
+- Click a matrix button to select a particle Interaction
 - Use the slider to adjust the selected Interaction strength.
 - Adjust friction and noise with the spin boxes
 - Use Pause/Resume to stop and continue the simulation
