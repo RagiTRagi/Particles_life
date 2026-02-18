@@ -153,7 +153,7 @@ def test_calculate_forces_two_particles():
 
     npt.assert_allclose(forces, expected, rtol=1e-6, atol=1e-6)
 
-def test_update_particles_no_forces_no_noise():
+def test_update_particles_no_forces_no_noise(monkeypatch):
     pos = np.array([[1.0, 1.0], [2.0, 2.0]], dtype=np.float32)
     vel = np.array([[0.5, -0.5], [1.0, 0.0]], dtype=np.float32)
     types = np.array([0, 1], dtype=int)
@@ -186,13 +186,13 @@ def test_update_particles_no_forces_no_noise():
         noise_strength=0.0,
         matrix=np.zeros((4, 4), dtype=np.float32),
     )
-
-    order = sort_by_xy(new_pos)
+    
+    order = np.lexsort((new_pos[:, 1], new_pos[:, 0]))
     new_pos = new_pos[order]
     new_vel = new_vel[order]
 
     expected_pos = pos + vel
-    expected_order = sort_by_xy(expected_pos)
+    expected_order = np.lexsort((expected_pos[:, 1], expected_pos[:, 0]))
     expected_pos = expected_pos[expected_order]
     expected_vel = vel[expected_order]
 
