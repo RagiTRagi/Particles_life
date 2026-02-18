@@ -1,9 +1,18 @@
-import p_life.gui as gui
+import sys
+import pytest
+
+try:
+    import p_life.gui as gui
+except ImportError:
+    if sys.platform.startswith("linux"):
+        pytest.skip("Skipping Linux", allow_module_level=True)
+    else:
+        raise
+
 import p_life.game as game
 import numpy as np
 from PySide6 import QtCore
 from p_life.frontend_vispy import types_to_colors, ParticleCanvas, colour_type
-
 
 # GUI Tests
 
