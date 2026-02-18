@@ -2,3 +2,5 @@ numpy
 numba
 vispy
 PySide6
+pytest
+pytest-qt
