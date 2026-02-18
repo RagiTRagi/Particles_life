@@ -168,5 +168,9 @@ timer = QtCore.QTimer()
 timer.timeout.connect(canvas.step_and_draw) 
 timer.start(int(1000 / 60))
 
-window.showMaximized()
-app.exec()
+def main():
+    window.showMaximized()
+    app.exec()
+
+if __name__ == "__main__":
+    main()
