@@ -175,26 +175,26 @@ def test_update_particles_no_forces_no_noise():
     monkeypatch.setattr(game, "calculate_forces", fake_forces)
 
     new_pos, new_vel, _ = game.update_particles(
-        pos, 
-        vel, 
+        pos,
+        vel,
         types,
-        world_width=10.0, 
-        world_height=10.0, 
+        world_width=10.0,
+        world_height=10.0,
         r_max=5.0,
-        dt=1.0, friction=1.0, 
+        dt=1.0,
+        friction=1.0,
         noise_strength=0.0,
-        matrix=np.zeros((4, 4), 
-        dtype=np.float32)
+        matrix=np.zeros((4, 4), dtype=np.float32),
     )
 
-    idx = np.lexsort((new_pos[:, 1], new_pos[:, 0]))
-    new_pos = new_pos[idx]
-    new_vel = new_vel[idx]
+    order = sort_by_xy(new_pos)
+    new_pos = new_pos[order]
+    new_vel = new_vel[order]
 
     expected_pos = pos + vel
-    idx_exp = np.lexsort((expected_pos[:, 1], expected_pos[:, 0]))
-    expected_pos = expected_pos[idx_exp]
-    expected_vel = vel[idx_exp]
+    expected_order = sort_by_xy(expected_pos)
+    expected_pos = expected_pos[expected_order]
+    expected_vel = vel[expected_order]
 
     npt.assert_allclose(new_pos, expected_pos)
     npt.assert_allclose(new_vel, expected_vel)

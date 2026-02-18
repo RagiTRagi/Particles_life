@@ -3,7 +3,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import time
-import numpy as np
 from p_life.game import Game, update_particles
 from p_life_old_version.game import update_particles_old
 
