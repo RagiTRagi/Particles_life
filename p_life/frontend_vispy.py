@@ -72,9 +72,9 @@ class ParticleCanvas(scene.SceneCanvas):
             for i, a in enumerate(alphas):
                 blur_col[i*n:(i+1)*n, 3] = a
 
-            self.blur.set_data(pos=blur_pos, face_color=blur_col, size=10.0, symbol="disc")
+            self.blur.set_data(pos=blur_pos, face_color=blur_col, size=7.0, symbol="disc")
 
-        self.markers.set_data(pos=pos, face_color=colors, size=7.0, symbol="disc", edge_width=0.0)
+        self.markers.set_data(pos=pos, face_color=colors, size=4.0, symbol="disc", edge_width=0.0)
 
     def step_and_draw(self):
         snap = self.game.step(self.dt)

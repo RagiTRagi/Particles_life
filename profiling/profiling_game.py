@@ -1,6 +1,10 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+import time
 from p_life.game import Game, update_particles
 from p_life_old_version.game import update_particles_old
-import time
 
 game = Game(
         n=20,
@@ -34,6 +38,3 @@ for _ in range(n):
 end = time.perf_counter()
 
 print("Hybrid version:", end - start)
-
-
-
