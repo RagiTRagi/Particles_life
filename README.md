@@ -8,11 +8,11 @@ A Python software application that simulates a **dynamic particle system** in wh
 
  - Python 3.9+
  - Install dependecies: 
- pip install -r requirements.txt
+ ```pip install -r requirements.txt```
 
 ## Run the App
  From the project Root:
- python main.py
+ ```python main.py```
  This starts the particle simulation UI.
 
 ## Controls 
