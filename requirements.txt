@@ -3,4 +3,4 @@ numba
 vispy
 PySide6
 pytest
-pytest-qt
+pytest-qt; sys_platform != "linux"
