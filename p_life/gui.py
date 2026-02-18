@@ -129,7 +129,7 @@ layout.addWidget(friction_box, num_rows+1, 1, 1, num_cols-1)
 
 noise_box = QtWidgets.QDoubleSpinBox()
 noise_box.setRange(0.0, 1.0)
-noise_box.setSingleStep(0.01)
+noise_box.setSingleStep(1 / 60)
 noise_box.setDecimals(3)
 noise_box.setValue(float(game.noise_strength))
 noise_box.valueChanged.connect(lambda v: setattr(game, "noise_strength", float(v)))

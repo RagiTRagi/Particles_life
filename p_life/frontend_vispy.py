@@ -21,7 +21,7 @@ class ParticleCanvas(scene.SceneCanvas):
         self.unfreeze()
 
         self.game = game
-        self.dt = 0.01
+        self.dt = 1 / 60
 
         self.view = self.central_widget.add_view()
         self.view.camera = scene.PanZoomCamera(aspect=None)

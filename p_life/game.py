@@ -213,8 +213,8 @@ class Game:
         self.h = world_height
         self.r_max = r_max
         self.pos, self.vel, self.types = self.init_particles(n, self.w, self.h)
-        self.friction = 0.95 # Etwas weniger Reibung für mehr Bewegung
-        self.noise_strength = 0.1 # Kleineres Rauschen
+        self.friction = 0.85 # Etwas weniger Reibung für mehr Bewegung
+        self.noise_strength = 0.3 # Kleineres Rauschen
 
         # Angepasste Matrix (Normale Werte)
         self.matrix = np.array([
@@ -224,7 +224,7 @@ class Game:
             [ 0, 0,  0, 0],  # rot
         ], dtype=np.float32)
 
-    def step(self, dt=0.01): # dt kleiner für Stabilität
+    def step(self, dt=1/60): # dt kleiner für Stabilität
         self.pos, self.vel, self.types = update_particles(
             self.pos, self.vel, self.types, self.w, self.h, self.r_max, dt, 
             self.friction, self.noise_strength, self.matrix

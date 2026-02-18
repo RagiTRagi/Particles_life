@@ -1,2 +1,5 @@
 numpy
 numba
+vispy
+collections
+PySide6

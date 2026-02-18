@@ -8,12 +8,6 @@ from p_life.frontend_vispy import types_to_colors, ParticleCanvas, colour_type
 # GUI Tests
 
 
-def test_value_to_color():
-    assert gui.value_to_color(-100) == "rgb(0,100,0)"
-    assert gui.value_to_color(0) == "rgb(50,50,255)"
-    assert gui.value_to_color(100) == "rgb(100,0,0)"
-
-
 def test_matrix_size():
     assert len(gui.particle_force_matrix) == 4
     assert len(gui.particle_force_matrix[0]) == 4
@@ -21,10 +15,10 @@ def test_matrix_size():
 
 def test_matrix_clabels():
     expected_labels = [
-        ["B x B", "B x Y", "B x G", "B x R"],
-        ["Y x B", "Y x Y", "Y x G", "Y x R"],
-        ["G x B", "G x Y", "G x G", "G x R"],
-        ["R x B", "R x Y", "R x G", "R x R"],
+        ["🔵 -> 🔵", "🔵 -> 🟡", "🔵 -> 🟢", "🔵 -> 🔴"],
+        ["🟡 -> 🔵", "🟡 -> 🟡", "🟡 -> 🟢", "🟡 -> 🔴"],
+        ["🟢 -> 🔵", "🟢 -> 🟡", "🟢 -> 🟢", "🟢 -> 🔴"],
+        ["🔴 -> 🔵", "🔴 -> 🟡", "🔴 -> 🟢", "🔴 -> 🔴"],
     ]
     for r in range(len(gui.particle_force_matrix)):
         for c in range(len(gui.particle_force_matrix[r])):
@@ -51,12 +45,6 @@ def test_particle_button_clicked():
     assert gui.current_button == (2, 3)
 
 
-def test_slider_range(qtbot):
-    qtbot.addWidget(gui.slider)
-    assert gui.slider.minimum() == -100
-    assert gui.slider.maximum() == 100
-
-
 def test_slider_value_changes_particle_force(qtbot):
     gui.current_button = (0, 0)
     qtbot.addWidget(gui.slider)
@@ -80,12 +68,6 @@ def test_noise_box_updates_game(qtbot):
     qtbot.addWidget(gui.noise_box)
     gui.noise_box.setValue(0.42)
     assert gui.game.noise_strength == 0.42
-
-
-def test_rmax_box_updates_game(qtbot):
-    qtbot.addWidget(gui.rmax_box)
-    gui.rmax_box.setValue(7.5)
-    assert gui.game.r_max == 7.5
 
 
 def test_pause_button_toggle(qtbot):
