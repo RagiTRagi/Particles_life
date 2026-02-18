@@ -3,7 +3,7 @@ import numpy.testing as npt
 
 import p_life.game as game
 
-def test_quadrantisieren_assign_cells():
+def test_regroup_particles_in_cells_to_assign_cells():
     pos = np.array([
         [1.0, 1.0], 
         [6.0, 1.0], 
@@ -16,7 +16,7 @@ def test_quadrantisieren_assign_cells():
     world_height = 10.0
     r_max = 5.0
 
-    sorted_pos, _, _, cell_starts, cell_counts, cols, rows = game.quadrantisieren(
+    sorted_pos, _, _, cell_starts, cell_counts, cols, rows = game.regroup_particles_in_cells(
         pos, velocities, types, world_width, world_height, r_max
     )
 
@@ -30,10 +30,10 @@ def test_quadrantisieren_assign_cells():
     assert cell_counts[2] == 0
     assert cell_counts[3] == 0
 
-def test_quadrantisieren_out_of_bounds():
+def test_regroup_particles_in_cells_out_of_bounds():
     pos = np.array([[-1.0, -1.0], [20.0, 20.0]])
     
-    _, _, _, _, cell_counts, _, _ = game.quadrantisieren(
+    _, _, _, _, cell_counts, _, _ = game.regroup_particles_in_cells(
         pos, np.zeros((2,2)), np.array([0,1]), 10, 10, 5
     )
 
@@ -100,7 +100,7 @@ def test_calculate_forces_no_neighbors():
     vel = np.zeros((2, 2), dtype=np.float32)
     types = np.array([0, 0], dtype=int)
 
-    sorted_pos, _, sorted_types, cell_starts, cell_counts, cols, rows = game.quadrantisieren(
+    sorted_pos, _, sorted_types, cell_starts, cell_counts, cols, rows = game.regroup_particles_in_cells(
         pos, vel, types, world_width=10.0, world_height=10.0, r_max=1.0
     )
 
@@ -126,7 +126,7 @@ def test_calculate_forces_two_particles():
     matrix = np.zeros((4, 4), dtype=np.float32)
     matrix[0, 0] = 1.0
 
-    sorted_pos, _, sorted_types, cell_starts, cell_counts, cols, rows = game.quadrantisieren(
+    sorted_pos, _, sorted_types, cell_starts, cell_counts, cols, rows = game.regroup_particles_in_cells(
         pos, vel, types, world_width=10.0, world_height=10.0, r_max=2.0
     )
 
