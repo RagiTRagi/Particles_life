@@ -12,11 +12,57 @@ colour_type = np.array([
 colour_type[:, :3] *= 0.8
 
 def types_to_colors(types):
+
+    """
+    Converts particle type indices to RGBA color values.
+    
+    Maps each particle type (0-3) to a corresponding color from the colour_type
+    array. This is used for visualization to distinguish different particle types.
+    
+    Args:
+        types (array-like): Array of particle type indices (integers 0-3)
+    
+    Returns:
+        np.ndarray: Array of RGBA colors, shape (N, 4), where N is the number
+                   of particles. Each row contains [R, G, B, A] values in range 0-1.
+    """
+
     types = np.asarray(types, dtype=np.int32)
     return colour_type[types % len(colour_type)]
 
 class ParticleCanvas(scene.SceneCanvas):
+
+    """
+    Vispy-based visualization canvas for the Particle Life simulation.
+    
+    This class creates an interactive window that displays the particle simulation
+    in real-time with motion blur effects. It uses Vispy's SceneCanvas for 
+    hardware-accelerated rendering and provides pan/zoom camera controls for navigation.
+    
+    Attributes:
+        game (Game): The Game instance being visualized
+        dt (float): Time step passed to the simulation at each frame
+        view (ViewBox): Vispy view container for the scene
+        history (deque): Rolling buffer of recent particle positions for motion blur
+        blur (Markers): Vispy visual object for rendering motion blur trail
+        markers (Markers): Vispy visual object for rendering current particle positions
+    """
+
     def __init__(self, game, world_width, world_height):
+
+        """
+        Initializes the visualization canvas with motion blur effects.
+        
+        Sets up the window, camera, particle markers, motion blur layer, and rendering
+        order. The camera is configured to show the entire world space without
+        interactive controls.
+        
+        Args:
+            game (Game): The Game instance to visualize
+            world_width (float): Width of the simulation world (for camera range)
+            world_height (float): Height of the simulation world (for camera range)
+        """
+
         super().__init__(keys='interactive', bgcolor='black', size=(100, 100))
         self.unfreeze()
 
@@ -49,6 +95,20 @@ class ParticleCanvas(scene.SceneCanvas):
         self.freeze()
 
     def draw_snapshot(self, snap):
+
+        """
+        Updates the visual representation with current particle states and motion blur.
+        
+        Takes a simulation snapshot and updates both the main particle markers and
+        the motion blur trail. The blur effect is created by rendering a history of
+        recent particle positions with decreasing alpha values.
+        
+        Args:
+            snap (dict): Simulation snapshot containing:
+                - "pos": Particle positions as np.ndarray, shape (N, 2)
+                - "types": Particle types as np.ndarray, shape (N,)
+        """
+
         pos = np.asarray(snap["pos"], dtype=np.float32)
         raw_types = np.asarray(snap["types"])
         types = raw_types.astype(np.int32, copy=False)
@@ -77,6 +137,15 @@ class ParticleCanvas(scene.SceneCanvas):
         self.markers.set_data(pos=pos, face_color=colors, size=4.0, symbol="disc", edge_width=0.0)
 
     def step_and_draw(self):
+
+        """
+        Advances the simulation and updates the visualization.
+        
+        This method is called by the Qt timer. Each call advances the simulation
+        by one time step, updates the display with motion blur, and triggers
+        a canvas refresh.
+        """
+        
         snap = self.game.step(self.dt)
         self.draw_snapshot(snap)
         self.update()

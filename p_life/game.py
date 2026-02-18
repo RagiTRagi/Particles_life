@@ -3,6 +3,33 @@ from numba import njit, prange
 
 
 def regroup_particles_in_cells(pos, velocities, types, world_width, world_height, r_max):
+    
+    """
+    Divides the world into a grid of cells for efficient neighbor search.
+    
+    This function partitions the simulation space into a regular grid where each cell
+    has dimensions approximately r_max x r_max. Particles are then sorted by their
+    cell assignment, which enables fast lookup of nearby particles during force
+    calculations.
+    
+    Arguments:
+        pos (np.ndarray): Particle positions, shape (N, 2) with [x, y] coordinates
+        velocities (np.ndarray): Particle velocities, shape (N, 2)
+        types (np.ndarray): Particle type indices, shape (N,)
+        world_width (float): Width of the simulation world
+        world_height (float): Height of the simulation world
+        r_max (float): Maximum interaction radius (defines cell size)
+    
+    Returns:
+        tuple: Contains the following elements:
+            - sorted_pos (np.ndarray): Positions sorted by cell ID
+            - sorted_vel (np.ndarray): Velocities sorted by cell ID
+            - sorted_types (np.ndarray): Types sorted by cell ID
+            - cell_starts (np.ndarray): Start index of each cell in sorted arrays
+            - cell_counts (np.ndarray): Number of particles in each cell
+            - cols (int): Number of grid columns
+            - rows (int): Number of grid rows
+    """
 
     cols = int(world_width / r_max)  # number of cols
     rows = int(world_height / r_max)  # number of rows
@@ -58,6 +85,29 @@ def update_particles(
     matrix,
 ):
     
+    """
+    Performs one simulation step by updating particle positions and velocities.
+    
+    This is the main simulation loop function. It partitions the world into a grid,
+    calculates forces between nearby particles, applies friction and noise, and
+    updates velocities and positions accordingly.
+    
+    Arguments:
+        pos (np.ndarray): Current particle positions, shape (N, 2)
+        vel (np.ndarray): Current particle velocities, shape (N, 2)
+        types (np.ndarray): Particle type indices, shape (N,)
+        world_width (float): Width of the simulation world
+        world_height (float): Height of the simulation world
+        r_max (float): Maximum interaction radius
+        dt (float): Time step for numerical integration
+        friction (float): Friction coefficient (0-1), reduces velocity each step
+        noise_strength (float): Standard deviation of random noise added to velocity
+        matrix (np.ndarray): Interaction matrix defining forces between particle types
+    
+    Returns:
+        tuple: Updated (positions, velocities, types) after one simulation step
+    """
+    
     # Calculate grids
     sorted_pos, sorted_vel, sorted_types, cell_starts, cell_counts, cols, rows = (
         regroup_particles_in_cells(pos, vel, types, world_width, world_height, r_max)
@@ -93,10 +143,19 @@ def update_particles(
 
 @njit
 def wrap_coordinate(value, max_value):
+
     """
     Torus-world: If val goes beyond max_val,
     it wraps around to the beginning.
+
+    Arguments:
+        value (float): Coordinate value to wrap
+        max_value (float): Maximum boundary value
+    
+    Returns:
+        float: Wrapped coordinate value in range [0, max_value)
     """
+
     return value % max_value
 
 
@@ -116,6 +175,22 @@ def calculate_forces(
     """
     Calculates the forces on each particle based on its neighbors in the grid.
     Uses "Cell List" approach for efficient neighbor search.
+
+    Arguments:
+        sorted_pos (np.ndarray): Particle positions sorted by cell ID, shape (N, 2)
+        sorted_types (np.ndarray): Particle types sorted by cell ID, shape (N,)
+        cell_starts (np.ndarray): Start index of each cell in sorted arrays
+        cell_counts (np.ndarray): Number of particles in each cell
+        cols (int): Number of grid columns
+        rows (int): Number of grid rows
+        interaction_matrix (np.ndarray): Matrix defining forces between particle types
+        r_max (float): Maximum interaction radius
+        world_width (float): Width of the simulation world
+        world_height (float): Height of the simulation world
+    
+    Returns:
+        np.ndarray: Array of force vectors, shape (N, 2), with [fx, fy] for each particle
+
     """
 
     total_forces = np.zeros((len(sorted_pos), 2), dtype=np.float32)  # Array for the total forces in X and Y direction
@@ -245,7 +320,39 @@ def calculate_forces(
 
 
 class Game:
+
+    """
+    Main simulation class for the Particle Life system.
+    
+    This class manages the particle simulation, including initialization of particles,
+    their positions, velocities, types, and the interaction matrix that defines
+    how different particle types attract or repel each other.
+    
+    Attributes:
+        w (float): World width
+        h (float): World height
+        r_max (float): Maximum interaction radius between particles
+        pos (np.ndarray): Current particle positions, shape (N, 2)
+        vel (np.ndarray): Current particle velocities, shape (N, 2)
+        types (np.ndarray): Particle type indices, shape (N,)
+        friction (float): Friction coefficient applied to velocities each step
+        noise_strength (float): Standard deviation of random noise added each step
+        matrix (np.ndarray): 4x4 interaction matrix defining forces between particle types
+    """
+
     def __init__(self, n=2000, world_width=50.0, world_height=50.0, r_max=10.0):
+
+        """
+        Initializes a new Particle Life simulation.
+        
+        Args:
+            n (int): Number of particles to create. Default is 2000.
+            world_width (float): Width of the simulation world. Default is 50.0.
+            world_height (float): Height of the simulation world. Default is 50.0.
+            r_max (float): Maximum interaction radius. Particles beyond this distance
+                        don't interact. Default is 10.0.
+        """
+         
         self.w = world_width
         self.h = world_height
         self.r_max = r_max
@@ -264,6 +371,24 @@ class Game:
         )
 
     def step(self, dt=0.01):  # dt smaller for stability
+
+        """
+        Advances the simulation by one time step.
+        
+        Updates particle positions and velocities based on inter-particle forces,
+        friction, and random noise. Also applies torus-world wrapping so particles
+        that move beyond world boundaries reappear on the opposite side.
+        
+        Args:
+            dt (float): Time step size for numerical integration. Default is 0.01.
+                       Smaller values increase stability but require more computation.
+        
+        Returns:
+            dict: Snapshot of current simulation state with keys:
+                - "pos": Current particle positions (np.ndarray)
+                - "types": Current particle types (np.ndarray)
+        """
+
         self.pos, self.vel, self.types = update_particles(
             self.pos, 
             self.vel, 
@@ -284,11 +409,44 @@ class Game:
         return {"pos": self.pos, "types": self.types}
 
     def init_particles(self, n, width, height):
+
+        """
+        Initializes particle positions, velocities, and types.
+        
+        Particles are randomly distributed across the world with zero initial velocity.
+        Each particle is randomly assigned one of four types (0-3).
+        
+        Args:
+            n (int): Number of particles to create
+            width (float): Width of the world for position initialization
+            height (float): Height of the world for position initialization
+        
+        Returns:
+            tuple: Contains (positions, velocities, types) where:
+                - positions: np.ndarray of shape (n, 2) with random x, y coordinates
+                - velocities: np.ndarray of shape (n, 2), initialized to zeros
+                - types: np.ndarray of shape (n,) with random integers 0-3
+        """
+
         pos = np.random.rand(n, 2).astype(np.float32) * np.array([width, height], dtype=np.float32)
         vel = np.zeros((n, 2), dtype=np.float32)
         types = np.random.randint(0, 4, size=n, dtype=int)
 
         return pos, vel, types
 
-    def set_force(self, row: int, col: int, force: float) -> None:
+    def set_force(self, row: int, col: int, force: float) -> None: 
+
+        """
+        Updates a specific interaction force in the matrix.
+        
+        Sets the force value between two particle types. This allows dynamic
+        adjustment of particle interactions during runtime, typically used
+        through the GUI controls.
+        
+        Args:
+            row (int): Row index (first particle type, 0-3)
+            col (int): Column index (second particle type, 0-3)
+            force (float): Force value to set (positive for attraction, negative for repulsion)
+        """
+
         self.matrix[row, col] = np.float32(force)
