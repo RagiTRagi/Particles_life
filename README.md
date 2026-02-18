@@ -82,7 +82,7 @@ requirements.txt
 - Slider to adjust selected interaction strength (-50 to +50)
 - Friction and noise controls
 - Pause/Resume button
-- Resest Button
+- Reset Button
 
 **Real-time Updates**: Changes to interaction matrix immediately affect the simulation
 
