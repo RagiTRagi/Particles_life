@@ -2,6 +2,18 @@ import numpy as np
 from p_life.game import quadrantisieren
 
 def test_quadrantisieren_logic():
+
+    """
+    Tests the basic logic of the grid partitioning function.
+    
+    Verifies that quadrantisieren correctly:
+    1. Calculates the right grid dimensions (cols and rows)
+    2. Sorts particles by their cell assignment
+    3. Correctly populates cell_starts and cell_counts arrays
+    
+    Uses a simple test case with 4 particles placed in 2 cells of a 2x2 grid.
+    """
+
     pos = np.array([
         [1.0, 1.0], # Zelle 0
         [6.0, 1.0], # Zelle 1
@@ -39,6 +51,18 @@ def test_quadrantisieren_logic():
     assert cell_counts[3] == 0
 
 def test_quadrantisieren_out_of_bounds():
+
+    """
+    Tests the robustness of quadrantisieren with out-of-bounds positions.
+    
+    Verifies that the function correctly handles particles positioned outside
+    the world boundaries (negative coordinates or beyond world dimensions) by
+    using np.clip to constrain them to valid grid cells.
+    
+    The test ensures the function doesn't crash and that all particles are
+    accounted for in the cell counts despite invalid initial positions.
+    """
+    
     # Testet den np.clip Schutz gegen Werte außerhalb der Welt
     pos = np.array([[-1.0, -1.0], [20.0, 20.0]])
     
