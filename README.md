@@ -2,7 +2,7 @@
 
 A Python software application that simulates a **dynamic particle system** in which thousands of particles interact based on predefined rules. The **simulation** should include different particle types with unique properties and interaction patterns, demonstrating emergent behavior and visual complexity. 
 
-# User Guide
+# Documentation for users
 
 ## Requirements
 
@@ -27,28 +27,14 @@ A Python software application that simulates a **dynamic particle system** in wh
 
 - If the UI does not open, verfiy you meet the requirements above
 - Make sure to run the command from the project root
+- Clear all local files stored at Particles_life\p_life\__pycache__ 
 
-# Developer Documentation
+# Documentation for developers
 
-## Project Structure
+## Project Architecture 
 
-```
-p_life
-├── __init__.py
-├── game.py # Physics simulation & particle logic
-├── frontend_vispy.py # Visualization (OpenGL rendering)
-└── gui.py # User interface & controls
+<img width="1461" height="941" alt="particles_life drawio" src="https://github.com/user-attachments/assets/b590ef13-f665-4803-a0d8-21019b105e78" />
 
-p_life_old_version
-├── __init__.py
-├── game.py
-├── frontend_vispy.py 
-└── gui.py
-
-main.py # Application entry point
-README.md
-requirements.txt
-```
 
 ## Core Components
 
