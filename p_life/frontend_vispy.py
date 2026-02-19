@@ -56,7 +56,7 @@ class ParticleCanvas(scene.SceneCanvas):
         world_width: float,
         world_height: float,
         canvas_size: tuple[int, int] = (750, 500),
-        dt: float = 0.01,
+        dt: float = 1/60,
         shadow_len: int = 6,
     ) -> None:
         """
