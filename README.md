@@ -34,13 +34,13 @@ This installs and starts the particle simulation UI.
 
 ## Controls 
 
-- Click a matrix button to select a particle Interaction
-- Use the slider to adjust the selected Interaction strength.
+- Click a matrix button to select a particle interaction
+- Use the slider to adjust the selected interaction strength.
 - Adjust friction and noise with the spin boxes
 - Use Pause/Resume to stop and continue the simulation
-- To Reset the Positions of the Particles use the Reset Button
+- To Reset the positions of the particles, use the Reset Button
 
-## Troubleshooting 
+## Troubleshooting guide
 
 - If the UI does not open, verfiy you meet the requirements above
 - Make sure to run the command from the project root
@@ -50,8 +50,7 @@ This installs and starts the particle simulation UI.
 
 ## Project Architecture 
 
-<img width="1461" height="941" alt="particles_life drawio" src="https://github.com/user-attachments/assets/b590ef13-f665-4803-a0d8-21019b105e78" />
-
+<img width="1461" height="931" alt="particles_life2 drawio" src="https://github.com/user-attachments/assets/496cb1ec-3967-403b-a569-8330d9cc669a" />
 
 ## Core Components
 
@@ -69,7 +68,7 @@ This installs and starts the particle simulation UI.
   - **Far range** (> 30%): Matrix-based attraction/repulsion
 - Torus world: particles wrap around at edges
 
-**Performance**: Numba JIT compilation with parallel execution for increased Performance
+**Performance**: Numba JIT compilation with parallel execution for increased performance
 
 ### 2. Visualization ([p_life/frontend_vispy.py](p_life/frontend_vispy.py))
 
