@@ -3,7 +3,7 @@ from PySide6 import QtCore
 
 import p_life.gui as gui
 import p_life.game as game
-from p_life.frontend_vispy import types_to_colors, ParticleCanvas, colour_type
+from p_life.frontend_vispy import types_to_colors, ParticleCanvas, COLOR_TYPE
 
 # GUI Tests
 
@@ -91,21 +91,21 @@ def test_pause_button_toggle(qtbot):
 def test_types_to_colors_basic():
     colors = types_to_colors([0, 1, 2, 3])
     assert colors.shape == (4, 4)
-    np.testing.assert_array_equal(colors[0], colour_type[0])
-    np.testing.assert_array_equal(colors[1], colour_type[1])
-    np.testing.assert_array_equal(colors[2], colour_type[2])
-    np.testing.assert_array_equal(colors[3], colour_type[3])
+    np.testing.assert_array_equal(colors[0], COLOR_TYPE[0])
+    np.testing.assert_array_equal(colors[1], COLOR_TYPE[1])
+    np.testing.assert_array_equal(colors[2], COLOR_TYPE[2])
+    np.testing.assert_array_equal(colors[3], COLOR_TYPE[3])
 
 
 def test_types_to_colors_wraparound():
     colors = types_to_colors([4])
     assert colors.shape == (1, 4)
-    np.testing.assert_array_equal(colors[0], colour_type[0])
+    np.testing.assert_array_equal(colors[0], COLOR_TYPE[0])
 
 
 def test_particle_canvas_step_and_draw():
     g = game.Game(n=100, world_width=50.0, world_height=50.0, r_max=10.0)
-    canvas = ParticleCanvas(g, world_width=g.w, world_height=g.h)
+    canvas = ParticleCanvas(g, world_width=g.w, world_height=g.h, dt=1/60)
 
     assert canvas.game is g
     assert canvas.dt == 1 / 60
