@@ -40,7 +40,7 @@ class ParticleCanvas(scene.SceneCanvas):
         self.blur.set_gl_state(
             blend=True,
             depth_test=False,
-            blend_func=('src_alpha', 'one')  
+            blend_func=('SRC_ALPHA', 'one_minus_src_alpha')  
         )
         self.markers.set_gl_state(blend=False, depth_test=False)
 
@@ -68,7 +68,7 @@ class ParticleCanvas(scene.SceneCanvas):
 
             blur_col = np.tile(colors, (k, 1)).astype(np.float32, copy=False)
 
-            alphas = np.linspace(0.02, 0.12, k, dtype=np.float32)
+            alphas = np.linspace(0.01, 0.05, k, dtype=np.float32)
             for i, a in enumerate(alphas):
                 blur_col[i*n:(i+1)*n, 3] = a
 
