@@ -250,8 +250,8 @@ class Game:
         self.h = world_height
         self.r_max = r_max
         self.pos, self.vel, self.types = self.init_particles(n, self.w, self.h)
-        self.friction = 0.95  # less friction = more movement
-        self.noise_strength = 0.1  # smaller noise
+        self.friction = 0.85  # less friction = more movement
+        self.noise_strength = 0.3  # more noise = more randommovement
 
         # Adjusted matrix (normal values)
         self.matrix = np.array(
@@ -292,3 +292,7 @@ class Game:
 
     def set_force(self, row: int, col: int, force: float) -> None:
         self.matrix[row, col] = np.float32(force)
+
+    def reset_particles(self):
+        n = self.pos.shape[0]
+        self.pos, self.vel, self.types = self.init_particles(n, self.w, self.h)
