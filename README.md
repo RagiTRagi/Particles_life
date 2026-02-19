@@ -1,19 +1,36 @@
-# Project Idea:
+# Particle Life:
 
-A Python software application that simulates a **dynamic particle system** in which thousands of particles interact based on predefined rules. The **simulation** should include different particle types with unique properties and interaction patterns, demonstrating emergent behavior and visual complexity. 
+A Python software application that simulates a **dynamic particle system** in which thousands of particles interact based on predefined rules. The **simulation** includes different particle types with unique properties and interaction patterns, demonstrating emergent behavior and visual complexity. 
 
 # Documentation for users
 
 ## Requirements
 
  - Python 3.9+
- - Install dependecies: 
- ```pip install -r requirements.txt```
+ - Anaconda (recommended)
 
-## Run the App
- From the project Root:
- ```python main.py```
- This starts the particle simulation UI.
+
+## Installation and running the Simulation via Anaconda Prompt
+
+### 1. Installation 
+```
+git clone https://github.com/RagiTRagi/Particles_life.git
+cd Particles_life
+```
+### 2. Creating an Environment
+```
+conda create --name particle_life python=3.12 -y
+conda activate particle_life
+```
+### 3. Install dependencies 
+```
+pip install -r requirements.txt
+```
+### 4. Starting the Simulation
+```
+python main.py
+```
+This installs and starts the particle simulation UI.
 
 ## Controls 
 
