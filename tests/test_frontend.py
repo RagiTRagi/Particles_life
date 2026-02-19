@@ -1,7 +1,8 @@
-import p_life.gui as gui
-import p_life.game as game
 import numpy as np
 from PySide6 import QtCore
+
+import p_life.gui as gui
+import p_life.game as game
 from p_life.frontend_vispy import types_to_colors, ParticleCanvas, colour_type
 
 # GUI Tests
@@ -27,7 +28,7 @@ def test_matrix_clabels():
 def test_matrix_initial_values():
     for r, row in enumerate(gui.particle_force_matrix):
         for c, cell in enumerate(row):
-            expected = int(round(float(gui.game.matrix[r, c]) * gui.scale))
+            expected = int(round(float(gui.game.matrix[r, c]) * gui.SCALE))
             assert cell[1] == expected
 
 
@@ -60,7 +61,7 @@ def test_friction_box_updates_game(qtbot):
 def test_particle_force_change_updates_game_matrix():
     gui.current_button = (1, 2)
     gui.particle_force_change(50)
-    assert gui.game.matrix[1, 2] == 50.0 / gui.scale
+    assert gui.game.matrix[1, 2] == 50.0 / gui.SCALE
 
 
 def test_noise_box_updates_game(qtbot):
@@ -72,15 +73,15 @@ def test_noise_box_updates_game(qtbot):
 def test_pause_button_toggle(qtbot):
     qtbot.addWidget(gui.pause_btn)
 
-    assert gui.running["on"] is True
+    assert gui.running is True
     assert gui.pause_btn.text() == "Pause"
 
     qtbot.mouseClick(gui.pause_btn, QtCore.Qt.LeftButton)
-    assert gui.running["on"] is False
+    assert gui.running is False
     assert gui.pause_btn.text() == "Resume"
 
     qtbot.mouseClick(gui.pause_btn, QtCore.Qt.LeftButton)
-    assert gui.running["on"] is True
+    assert gui.running is True
     assert gui.pause_btn.text() == "Pause"
 
 
